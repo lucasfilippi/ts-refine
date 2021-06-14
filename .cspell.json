@@ -21,7 +21,9 @@
     "sandboxed",
     "transpiled",
     "typedoc",
-    "untracked"
+    "untracked",
+    "minifacet",
+    "minisearch"
   ],
   "flagWords": [],
   "ignorePaths": [

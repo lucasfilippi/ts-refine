@@ -1,4 +1,8 @@
-import { Options, SearchOptions, SearchResult } from 'minisearch';
+import {
+  Options as MiniSearchOptions,
+  SearchOptions,
+  SearchResult,
+} from 'minisearch';
 import MiniSearch from 'minisearch';
 
 export type FacetFilter = {
@@ -21,13 +25,17 @@ export type FacetedSearchResult = {
   readonly facetsDistribution: FacetsDistribution;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default class MiniFacet<T = any> extends MiniSearch {
-  protected _attributesForFaceting: string[];
+export type Options<T> = MiniSearchOptions<T> & {
+  facetingFields: string[];
+};
 
-  constructor(options: Options<T>, attributesForFaceting: string[]) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export class MiniFacet<T = any> extends MiniSearch {
+  protected _facetingFields: string[];
+
+  constructor(options: Options<T>) {
     super(options);
-    this._attributesForFaceting = attributesForFaceting;
+    this._facetingFields = options.facetingFields;
   }
 
   facetedSearch(
@@ -44,7 +52,7 @@ export default class MiniFacet<T = any> extends MiniSearch {
       nbHits: msResults.length,
       facetsDistribution: this.computeFacetDistribution(
         msResults,
-        searchOptions.facets || this._attributesForFaceting
+        searchOptions.facets || this._facetingFields
       ),
     };
 
@@ -70,24 +78,24 @@ export default class MiniFacet<T = any> extends MiniSearch {
 
   computeFacetDistribution(
     hits: SearchResult[],
-    attributesForFaceting: string[]
+    facetingFields: string[]
   ): FacetsDistribution {
     const distribution: FacetsDistribution = Object.fromEntries(
-      attributesForFaceting.map((a: string) => [a, {}])
+      facetingFields.map((a: string) => [a, {}])
     );
 
     hits.forEach((hit: SearchResult) => {
-      for (const attr of attributesForFaceting) {
+      for (const field of facetingFields) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const values: any[] = Array.isArray(hit[attr])
-          ? hit[attr]
-          : [hit[attr]];
+        const values: any[] = Array.isArray(hit[field])
+          ? hit[field]
+          : [hit[field]];
 
         values.forEach((value) => {
-          if (!(value in distribution[attr])) {
-            distribution[attr][value] = 1;
+          if (!(value in distribution[field])) {
+            distribution[field][value] = 1;
           } else {
-            distribution[attr][value]++;
+            distribution[field][value]++;
           }
         });
       }

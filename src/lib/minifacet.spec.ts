@@ -1,7 +1,7 @@
 import test, { ExecutionContext } from 'ava';
 import { SearchResult } from 'minisearch';
 
-import MiniFacet, { FacetFilter, FacetsDistribution } from './minifacet';
+import { FacetFilter, FacetsDistribution, MiniFacet } from './minifacet';
 
 function macroApplyFacetFilters(
   t: ExecutionContext,
@@ -9,13 +9,11 @@ function macroApplyFacetFilters(
   facetFilters: FacetFilter[],
   expected: SearchResult[]
 ) {
-  const minifacet = new MiniFacet(
-    {
-      fields: ['title', 'text'],
-      storeFields: ['title', 'category'],
-    },
-    ['key1', 'key2', 'key3']
-  );
+  const minifacet = new MiniFacet({
+    fields: ['title', 'text'],
+    storeFields: ['title', 'category'],
+    facetingFields: ['key1', 'key2', 'key3'],
+  });
 
   const filtered = minifacet.applyFacetFilters(hits, facetFilters);
 
@@ -109,13 +107,11 @@ function macroComputeFacetDistribution(
   hits: SearchResult[],
   expected: FacetsDistribution
 ) {
-  const minifacet = new MiniFacet(
-    {
-      fields: ['title', 'text'],
-      storeFields: ['title', 'category'],
-    },
-    attr
-  );
+  const minifacet = new MiniFacet({
+    fields: ['title', 'text'],
+    storeFields: ['title', 'category'],
+    facetingFields: attr,
+  });
 
   const distribution = minifacet.computeFacetDistribution(hits, attr);
 
@@ -172,13 +168,11 @@ test(
 );
 
 test('facetedSearch', (t) => {
-  const minifacet = new MiniFacet(
-    {
-      fields: ['title', 'text'],
-      storeFields: ['title', 'category', 'random', 'tag'],
-    },
-    ['category', 'random', 'tag']
-  );
+  const minifacet = new MiniFacet({
+    fields: ['title', 'text'],
+    storeFields: ['title', 'category', 'random', 'tag'],
+    facetingFields: ['category', 'random', 'tag'],
+  });
 
   const documents = [
     {

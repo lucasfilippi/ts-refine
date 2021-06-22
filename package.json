@@ -42,7 +42,8 @@
     "node": ">=10"
   },
   "dependencies": {
-    "minisearch": "^3.0.2"
+    "minisearch": "^3.0.2",
+    "typedfastbitset": "^0.3.1"
   },
   "devDependencies": {
     "@ava/typescript": "^1.1.1",

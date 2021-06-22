@@ -57,13 +57,14 @@ export type FacetedSearchResult = {
   readonly facetsDistribution: FacetsDistribution;
 };
 
-export type Options<T> = MiniSearchOptions<T> & {
+export type Options<T> = {
   facetingFields: string[];
   storedField: string[];
+  fullTextOptions?: MiniSearchOptions<T>;
 };
 
 export class MiniFacet<T extends Indexable> {
-  protected minisearch: MiniSearch;
+  protected minisearch?: MiniSearch;
   protected facetingFields: string[];
   protected storedField: string[];
   protected db: Indexed[];
@@ -76,8 +77,11 @@ export class MiniFacet<T extends Indexable> {
       (f) => !this.facetingFields.includes(f)
     );
     // minisearch do not store any data
-    delete options.storeFields;
-    this.minisearch = new MiniSearch<T>(options);
+    if (options.fullTextOptions) {
+      // force minisearch to not stored anything
+      delete options.fullTextOptions.storeFields;
+      this.minisearch = new MiniSearch<T>(options.fullTextOptions);
+    }
     this.db = [];
     this.raw = [];
     this.facetIndexes = new Map();
@@ -126,7 +130,7 @@ export class MiniFacet<T extends Indexable> {
    */
   compile(): void {
     // Add to minisearch index
-    this.minisearch.addAll(this.raw);
+    if (this.minisearch) this.minisearch.addAll(this.raw);
     // Compute facets bitmap indexes
     this.buildFacetIndexes();
 

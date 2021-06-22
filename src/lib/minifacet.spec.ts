@@ -52,7 +52,6 @@ const documents = [
 
 test('compile', (t) => {
   const minifacet = new MiniFacet({
-    fields: ['title', 'text'],
     storedField: ['id', 'title'],
     facetingFields: ['category', 'random', 'review'],
   });
@@ -87,7 +86,6 @@ function macroApplyFacetFilters(
   expected: number[]
 ) {
   const minifacet = new MiniFacet({
-    fields: ['title', 'text'],
     facetingFields: facetingFields,
     storedField: [
       'id',
@@ -195,7 +193,6 @@ function macroComputeFacetDistribution(
   expected: FacetsDistribution
 ) {
   const minifacet = new MiniFacet({
-    fields: ['title', 'text'],
     facetingFields: attr,
     storedField: [
       'id',
@@ -300,7 +297,6 @@ function shallowEqual(object1: SearchResult, object2: SearchResult) {
 
 test('indexToSearchResult', (t) => {
   const minifacet = new MiniFacet({
-    fields: ['title', 'text'],
     storedField: [
       'id',
       'title',
@@ -344,7 +340,6 @@ function macroSearch(
   expected: FacetedSearchResult
 ) {
   const minifacet = new MiniFacet({
-    fields: ['title', 'text'],
     facetingFields: facetingFields,
     storedField: [
       'id',
@@ -448,73 +443,3 @@ test(
     },
   }
 );
-// test('facetedSearch', (t) => {
-//   const minifacet = new MiniFacet({
-//     fields: ['title', 'text'],
-//     storeFields: ['title', 'category', 'random', 'review'],
-//     facetingFields: ['category', 'random', 'review'],
-//   });
-
-//   const documents = [
-//     {
-//       id: 1,
-//       title: 'Zen Mobs Dick',
-//       text: 'Call me Ishmael. Some years ago...',
-//       category: 'fiction',
-//       random: 'toc',
-//       review: 'good',
-//     },
-//     {
-//       id: 2,
-//       title: 'Zen and the Art of Motorcycle Maintenance',
-//       text: 'I can see by my watch...',
-//       category: 'fiction',
-//       random: 'tic',
-//       review: 'good',
-//     },
-//     {
-//       id: 3,
-//       title: 'Zen Necromancer',
-//       text: 'The sky above the port was...',
-//       category: 'fiction',
-//       random: 'tac',
-//       review: 'neutral',
-//     },
-//     {
-//       id: 4,
-//       title: 'Zen and the Art of Archery',
-//       text: 'At first sight it must seem...',
-//       category: 'non-fiction',
-//       random: 'toc',
-//       review: 'bad',
-//     },
-//   ];
-//   // Add documents to the index
-//   minifacet.add(documents);
-//   minifacet.compile();
-
-//   // Search for documents:
-//   const results = minifacet.facetedSearch('zen', {
-//     boost: { title: 2 },
-//     facetFilters: [{ name: 'category', values: ['fiction'] }],
-//   });
-//   console.log(results);
-//   t.is(3, results.nbHits);
-//   t.deepEqual(
-//     {
-//       category: {
-//         fiction: 3,
-//       },
-//       random: {
-//         tac: 1,
-//         tic: 1,
-//         toc: 1,
-//       },
-//       review: {
-//         good: 2,
-//         neutral: 1,
-//       },
-//     },
-//     results.facetsDistribution
-//   );
-// });

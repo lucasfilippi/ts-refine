@@ -6,6 +6,7 @@ import {
   FacetsDistribution,
   // Indexable,
   MiniFacet,
+  Primitives,
   SearchResult,
 } from './minifacet';
 
@@ -280,7 +281,12 @@ function shallowEqual(object1: SearchResult, object2: SearchResult) {
   }
 
   for (const key of keys1) {
-    if (object1.data[key] !== object2.data[key]) {
+    if (Array.isArray(object1.data[key])) {
+      const array1 = object1.data[key] as Array<Primitives>;
+      const array2 = object2.data[key] as Array<Primitives>;
+      array1.length === array2.length &&
+        array1.every((value, index) => value === array2[index]);
+    } else if (object1.data[key] !== object2.data[key]) {
       return false;
     }
   }
@@ -300,7 +306,7 @@ test('indexToSearchResult', (t) => {
       'review',
       'tags',
     ],
-    facetingFields: ['category', 'random', 'review'],
+    facetingFields: ['category', 'random', 'review', 'tags'],
   });
 
   minifacet.add(documents);
@@ -312,13 +318,16 @@ test('indexToSearchResult', (t) => {
   t.deepEqual(searchResults.length, 4);
 
   const expectedResults: SearchResult[] = documents.map((d) => {
+    d.tags = d.tags.map((x) => x);
     return {
       score: 1,
       data: d,
     };
   });
 
-  t.log(searchResults);
+  // searchResults.forEach((r) => t.log(r));
+  // t.log('Expected');
+  // expectedResults.forEach((r) => t.log(r));
   expectedResults.forEach((r) => {
     t.true(searchResults.some((item) => shallowEqual(item, r)));
   });

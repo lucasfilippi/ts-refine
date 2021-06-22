@@ -26,6 +26,11 @@ export interface Indexable {
   [attr: string]: Primitives | Primitives[];
 }
 
+export interface Indexed {
+  id: number;
+  data: Indexable;
+}
+
 export type FacetedSearchOptions = SearchOptions & {
   readonly facets?: string[];
   facetFilters?: FacetFilter[];
@@ -54,13 +59,15 @@ export class MiniFacet<T extends Indexable> {
   protected minisearch: MiniSearch;
   protected facetingFields: string[];
   protected storedField: string[];
-  protected db: Indexable[];
+  protected db: Indexed[];
   protected raw: T[];
   protected facetIndexes: Map<string, TypedFastBitSet>;
 
   constructor(options: Options<T>) {
     this.facetingFields = options.facetingFields;
-    this.storedField = options.storedField || [];
+    this.storedField = options.storedField.filter(
+      (f) => !this.facetingFields.includes(f)
+    );
     // minisearch do not store any data
     delete options.storeFields;
     this.minisearch = new MiniSearch<T>(options);
@@ -70,7 +77,7 @@ export class MiniFacet<T extends Indexable> {
   }
 
   get database(): Indexable[] {
-    return this.db;
+    return this.db.map((indexed) => indexed.data);
   }
 
   /**
@@ -117,13 +124,14 @@ export class MiniFacet<T extends Indexable> {
     this.buildFacetIndexes();
 
     // filter raw to store in db
-    this.db = this.raw.map((d) => {
-      return Object.keys(d)
+    this.db = this.raw.map((d, i) => {
+      const o = Object.keys(d)
         .filter((key) => this.storedField.includes(key))
         .reduce((obj: Indexable, key) => {
           obj[key] = d[key];
           return obj as T;
         }, {});
+      return { id: i, data: o };
     });
     // reset raw
     this.raw = [];
@@ -190,11 +198,37 @@ export class MiniFacet<T extends Indexable> {
   }
 
   indexToSearchResult(index: TypedFastBitSet): SearchResult[] {
-    return this.db
-      .filter((_, i) => index.has(i))
-      .map((d) => {
-        return { score: 1, data: d };
-      });
+    return (
+      this.db
+        // use only idx in index
+        .filter((_, i) => index.has(i))
+        // Add Facet from facetIndexes
+        .map((indexed) => {
+          for (const [key, idx] of this.facetIndexes) {
+            if (idx.has(indexed.id)) {
+              const [field, value] = key.split(':', 2);
+
+              if (indexed.data[field]) {
+                if (Array.isArray(indexed.data[field])) {
+                  (indexed.data[field] as Array<Primitives>).push(value);
+                } else {
+                  indexed.data[field] = [
+                    indexed.data[field] as Primitives,
+                    value,
+                  ];
+                }
+              } else {
+                indexed.data[field] = value;
+              }
+            }
+          }
+          return indexed;
+        })
+        // build SearchResult object
+        .map((d) => {
+          return { score: 1, data: d.data };
+        })
+    );
   }
 
   // facetedSearch(

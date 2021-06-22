@@ -2,7 +2,7 @@ import MiniSearch, {
   // AsPlainObject,
   Options as MiniSearchOptions,
   SearchOptions,
-  SearchResult,
+  // SearchResult as MiniSearchSearchResult,
 } from 'minisearch';
 import TypedFastBitSet from 'typedfastbitset';
 
@@ -35,9 +35,13 @@ export type FacetsDistribution = {
   readonly [facetName: string]: { [facetValue: string]: number };
 };
 
-export type FacetedSearchResult = {
-  readonly hits: readonly SearchResult[];
-  readonly nbHits: number;
+export type SearchResult<T extends Indexable> = {
+  score: number;
+  data: T;
+};
+
+export type FacetedSearchResult<T extends Indexable> = {
+  readonly hits: readonly SearchResult<T>[];
   readonly facetsDistribution: FacetsDistribution;
 };
 
@@ -128,7 +132,6 @@ export class MiniFacet<T extends Indexable> {
     });
 
     return results;
-    // return this.db.filter((_, i) => results.has(i));
   }
 
   computeFacetDistribution(
@@ -163,24 +166,15 @@ export class MiniFacet<T extends Indexable> {
       })
     );
 
-    // hits.forEach((hit: SearchResult) => {
-    //   for (const field of facetingFields) {
-    //     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    //     const values: any[] = Array.isArray(hit[field])
-    //       ? hit[field]
-    //       : [hit[field]];
-
-    //     values.forEach((value) => {
-    //       if (!(value in distribution[field])) {
-    //         distribution[field][value] = 1;
-    //       } else {
-    //         distribution[field][value]++;
-    //       }
-    //     });
-    //   }
-    // });
-
     return distribution;
+  }
+
+  indexToSearchResult(index: TypedFastBitSet): SearchResult<T>[] {
+    return this.db
+      .filter((_, i) => index.has(i))
+      .map((d) => {
+        return { score: 1, data: d };
+      });
   }
 
   // facetedSearch(

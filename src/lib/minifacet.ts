@@ -1,8 +1,7 @@
 import MiniSearch, {
   // AsPlainObject,
   Options as MiniSearchOptions,
-  SearchOptions,
-  // SearchResult as MiniSearchSearchResult,
+  SearchOptions as MiniSearchSearchOptions,
 } from 'minisearch';
 import TypedFastBitSet from 'typedfastbitset';
 
@@ -31,9 +30,17 @@ export interface Indexed {
   data: Indexable;
 }
 
-export type FacetedSearchOptions = SearchOptions & {
+export type FullTextSearchOptions = MiniSearchSearchOptions & {
+  query: string;
+};
+
+export type SearchOptions = {
+  // Return only this facet. If not specified every available facet will be computed
   readonly facets?: string[];
+  // Filter results on Facets
   facetFilters?: FacetFilter[];
+  // Specify a full text search
+  fullTextSearchOptions?: FullTextSearchOptions;
 };
 
 export type FacetsDistribution = {
@@ -137,11 +144,12 @@ export class MiniFacet<T extends Indexable> {
     this.raw = [];
   }
 
-  applyFacetFilters(facetFilters: FacetFilter[]): TypedFastBitSet {
+  applyFacetFilters(
+    hits: TypedFastBitSet,
+    facetFilters: FacetFilter[]
+  ): TypedFastBitSet {
     // get all facetIndexesId
     const facetIndexesIds = facetFilters.map((f) => f.facetIds());
-
-    const results: TypedFastBitSet = new TypedFastBitSet([...this.db.keys()]);
 
     facetIndexesIds.forEach((filter) => {
       const idx = filter
@@ -156,10 +164,10 @@ export class MiniFacet<T extends Indexable> {
           new TypedFastBitSet()
         );
 
-      results.intersection(idx);
+      hits.intersection(idx);
     });
 
-    return results;
+    return hits;
   }
 
   computeFacetDistribution(
@@ -186,7 +194,8 @@ export class MiniFacet<T extends Indexable> {
 
         if (indexes.has(field)) {
           for (const [key, idx] of indexes.get(field)) {
-            dist[key] = hits.new_intersection(idx).size();
+            const count = hits.new_intersection(idx).size();
+            if (count > 0) dist[key] = count;
           }
         }
 
@@ -231,42 +240,26 @@ export class MiniFacet<T extends Indexable> {
     );
   }
 
-  // facetedSearch(
-  //   queryString: string,
-  //   searchOptions: FacetedSearchOptions = {}
-  // ): FacetedSearchResult {
-  //   const msResults = this.applyFacetFilters(
-  //     this.minisearch.search(queryString, searchOptions),
-  //     searchOptions.facetFilters
-  //   );
+  search(options: SearchOptions = {}): FacetedSearchResult {
+    const match: TypedFastBitSet = new TypedFastBitSet([...this.db.keys()]);
 
-  //   const results: FacetedSearchResult = {
-  //     hits: msResults,
-  //     nbHits: msResults.length,
-  //     facetsDistribution: this.computeFacetDistribution(
-  //       msResults,
-  //       searchOptions.facets || this.facetingFields
-  //     ),
-  //   };
+    if (options.facetFilters && options.facetFilters.length > 0) {
+      this.applyFacetFilters(match, options.facetFilters);
+    }
 
-  //   return results;
-  // }
+    // TODO add full text search
+    // TODO add Geo search
 
-  // getAll(): FacetedSearchResult {
-  //   console.log('minifacet::getAll');
-  //   const msResults = this.minisearch.getAll();
+    const results: FacetedSearchResult = {
+      hits: this.indexToSearchResult(match),
+      facetsDistribution: this.computeFacetDistribution(
+        match,
+        options.facets || this.facetingFields
+      ),
+    };
 
-  //   const results: FacetedSearchResult = {
-  //     hits: msResults,
-  //     nbHits: msResults.length,
-  //     facetsDistribution: this.computeFacetDistribution(
-  //       msResults,
-  //       this.facetingFields
-  //     ),
-  //   };
-
-  //   return results;
-  // }
+    return results;
+  }
 
   // toJSON(): AsPlainObject {
   //   return this.minisearch.toJSON();

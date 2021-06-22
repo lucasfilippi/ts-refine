@@ -2,11 +2,12 @@ import test, { ExecutionContext } from 'ava';
 import TypedFastBitSet from 'typedfastbitset';
 
 import {
+  FacetedSearchResult,
   FacetFilter,
   FacetsDistribution,
-  // Indexable,
   MiniFacet,
   Primitives,
+  SearchOptions,
   SearchResult,
 } from './minifacet';
 
@@ -102,9 +103,12 @@ function macroApplyFacetFilters(
   minifacet.add(documents);
   minifacet.compile();
 
-  const filtered = minifacet.applyFacetFilters(facetFilters);
+  const filtered = minifacet.applyFacetFilters(
+    new TypedFastBitSet([0, 1, 2, 3]),
+    facetFilters
+  );
 
-  t.deepEqual(expected, filtered.array());
+  t.deepEqual(filtered.array(), expected);
 }
 
 test(
@@ -212,7 +216,7 @@ function macroComputeFacetDistribution(
   );
 
   // t.log(distribution);
-  t.deepEqual(expected, distribution);
+  t.deepEqual(distribution, expected);
 }
 
 test(
@@ -333,6 +337,117 @@ test('indexToSearchResult', (t) => {
   });
 });
 
+function macroSearch(
+  t: ExecutionContext,
+  options: SearchOptions,
+  facetingFields: string[],
+  expected: FacetedSearchResult
+) {
+  const minifacet = new MiniFacet({
+    fields: ['title', 'text'],
+    facetingFields: facetingFields,
+    storedField: [
+      'id',
+      'title',
+      'text',
+      'category',
+      'random',
+      'review',
+      'tags',
+    ],
+  });
+
+  minifacet.add(documents);
+  minifacet.compile();
+
+  const results = minifacet.search(options);
+
+  expected.hits.forEach((r) => {
+    t.true(results.hits.some((item) => shallowEqual(item, r)));
+  });
+
+  t.deepEqual(results.facetsDistribution, expected.facetsDistribution);
+}
+
+test('search all', macroSearch, {}, ['category', 'random', 'review', 'tags'], {
+  hits: [],
+  facetsDistribution: {
+    category: {
+      fiction: 3,
+      'non-fiction': 1,
+    },
+    random: {
+      toc: 2,
+      tic: 1,
+      tac: 1,
+    },
+    review: {
+      bad: 1,
+      good: 2,
+      neutral: 1,
+    },
+    tags: {
+      book: 2,
+      cool: 1,
+      film: 2,
+      motor: 1,
+      dark: 2,
+    },
+  },
+});
+
+test(
+  'search with facet filters',
+  macroSearch,
+  { facetFilters: [new FacetFilter('tags', ['motor', 'book'])] },
+  ['category', 'random', 'review', 'tags'],
+  {
+    hits: [],
+    facetsDistribution: {
+      category: {
+        fiction: 3,
+      },
+      random: {
+        toc: 1,
+        tic: 1,
+        tac: 1,
+      },
+      review: {
+        good: 2,
+        neutral: 1,
+      },
+      tags: {
+        book: 2,
+        cool: 1,
+        film: 1,
+        motor: 1,
+        dark: 1,
+      },
+    },
+  }
+);
+
+test(
+  'search with facet filters and facet restrictions',
+  macroSearch,
+  { facetFilters: [new FacetFilter('tags', ['motor', 'book'])] },
+  ['category', 'tags'],
+  {
+    hits: [],
+    facetsDistribution: {
+      category: {
+        fiction: 3,
+      },
+      tags: {
+        book: 2,
+        cool: 1,
+        film: 1,
+        motor: 1,
+        dark: 1,
+      },
+    },
+  }
+);
 // test('facetedSearch', (t) => {
 //   const minifacet = new MiniFacet({
 //     fields: ['title', 'text'],

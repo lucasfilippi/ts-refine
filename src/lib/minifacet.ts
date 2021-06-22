@@ -80,6 +80,8 @@ export class MiniFacet<T extends Indexable> {
     if (options.fullTextOptions) {
       // force minisearch to not stored anything
       delete options.fullTextOptions.storeFields;
+      // use our internal id, see compile method
+      options.fullTextOptions.idField = '_minifacetId';
       this.minisearch = new MiniSearch<T>(options.fullTextOptions);
     }
     this.db = [];
@@ -93,7 +95,7 @@ export class MiniFacet<T extends Indexable> {
 
   /**
    * Adds all the given documents to the internal db
-   * This method can be called multiple times
+   * This method can be called multiple times before calling compile
    *
    * @param documents  An array of documents to be indexed
    */
@@ -129,8 +131,6 @@ export class MiniFacet<T extends Indexable> {
    * Compile the indexes.
    */
   compile(): void {
-    // Add to minisearch index
-    if (this.minisearch) this.minisearch.addAll(this.raw);
     // Compute facets bitmap indexes
     this.buildFacetIndexes();
 
@@ -146,6 +146,15 @@ export class MiniFacet<T extends Indexable> {
     });
     // reset raw
     this.raw = [];
+
+    // Add to minisearch index
+    if (this.minisearch) {
+      this.minisearch.addAll(
+        this.db.map((indexed) => {
+          return { ...indexed.data, _minifacetId: indexed.id };
+        })
+      );
+    }
   }
 
   applyFacetFilters(
@@ -172,6 +181,16 @@ export class MiniFacet<T extends Indexable> {
     });
 
     return hits;
+  }
+
+  applyFullTextSearch(options: FullTextSearchOptions): TypedFastBitSet {
+    if (this.minisearch) {
+      const results = this.minisearch.search(options.query, options);
+
+      return new TypedFastBitSet(results.map((r) => r.id));
+    }
+    // if minisearch is not defined, we return an empty bitset
+    return new TypedFastBitSet();
   }
 
   computeFacetDistribution(

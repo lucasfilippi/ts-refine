@@ -23,7 +23,7 @@ export class FacetFilter {
 }
 
 export interface Indexable {
-  readonly [attr: string]: Primitives | Primitives[];
+  [attr: string]: Primitives | Primitives[];
 }
 
 export type FacetedSearchOptions = SearchOptions & {
@@ -35,34 +35,42 @@ export type FacetsDistribution = {
   readonly [facetName: string]: { [facetValue: string]: number };
 };
 
-export type SearchResult<T extends Indexable> = {
+export type SearchResult = {
   score: number;
-  data: T;
+  data: Indexable;
 };
 
-export type FacetedSearchResult<T extends Indexable> = {
-  readonly hits: readonly SearchResult<T>[];
+export type FacetedSearchResult = {
+  readonly hits: readonly SearchResult[];
   readonly facetsDistribution: FacetsDistribution;
 };
 
 export type Options<T> = MiniSearchOptions<T> & {
   facetingFields: string[];
+  storedField: string[];
 };
 
 export class MiniFacet<T extends Indexable> {
   protected minisearch: MiniSearch;
   protected facetingFields: string[];
-  // protected storeFields?: string[];
-  protected db: T[];
+  protected storedField: string[];
+  protected db: Indexable[];
+  protected raw: T[];
   protected facetIndexes: Map<string, TypedFastBitSet>;
 
   constructor(options: Options<T>) {
     this.facetingFields = options.facetingFields;
-    // this.storeFields = options.storeFields;
+    this.storedField = options.storedField || [];
+    // minisearch do not store any data
     delete options.storeFields;
     this.minisearch = new MiniSearch<T>(options);
     this.db = [];
+    this.raw = [];
     this.facetIndexes = new Map();
+  }
+
+  get database(): Indexable[] {
+    return this.db;
   }
 
   /**
@@ -72,11 +80,11 @@ export class MiniFacet<T extends Indexable> {
    * @param documents  An array of documents to be indexed
    */
   add(documents: T[]): void {
-    this.db.push(...documents);
+    this.raw.push(...documents);
   }
 
   buildFacetIndexes(): void {
-    this.db.forEach((doc, docIdx) => {
+    this.raw.forEach((doc, docIdx) => {
       for (const field of this.facetingFields) {
         const values: Primitives[] = Array.isArray(doc[field])
           ? (doc[field] as Primitives[])
@@ -104,9 +112,21 @@ export class MiniFacet<T extends Indexable> {
    */
   compile(): void {
     // Add to minisearch index
-    this.minisearch.addAll(this.db);
+    this.minisearch.addAll(this.raw);
     // Compute facets bitmap indexes
     this.buildFacetIndexes();
+
+    // filter raw to store in db
+    this.db = this.raw.map((d) => {
+      return Object.keys(d)
+        .filter((key) => this.storedField.includes(key))
+        .reduce((obj: Indexable, key) => {
+          obj[key] = d[key];
+          return obj as T;
+        }, {});
+    });
+    // reset raw
+    this.raw = [];
   }
 
   applyFacetFilters(facetFilters: FacetFilter[]): TypedFastBitSet {
@@ -169,7 +189,7 @@ export class MiniFacet<T extends Indexable> {
     return distribution;
   }
 
-  indexToSearchResult(index: TypedFastBitSet): SearchResult<T>[] {
+  indexToSearchResult(index: TypedFastBitSet): SearchResult[] {
     return this.db
       .filter((_, i) => index.has(i))
       .map((d) => {

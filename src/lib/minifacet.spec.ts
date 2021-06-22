@@ -4,7 +4,7 @@ import TypedFastBitSet from 'typedfastbitset';
 import {
   FacetFilter,
   FacetsDistribution,
-  Indexable,
+  // Indexable,
   MiniFacet,
   SearchResult,
 } from './minifacet';
@@ -48,6 +48,36 @@ const documents = [
   },
 ];
 
+test('compile', (t) => {
+  const minifacet = new MiniFacet({
+    fields: ['title', 'text'],
+    storedField: ['id', 'title'],
+    facetingFields: ['category', 'random', 'review'],
+  });
+
+  minifacet.add(documents);
+  minifacet.compile();
+
+  t.deepEqual(minifacet.database, [
+    {
+      id: 1,
+      title: 'Zen Mobs Dick',
+    },
+    {
+      id: 2,
+      title: 'Zen and the Art of Motorcycle Maintenance',
+    },
+    {
+      id: 3,
+      title: 'Zen Necromancer',
+    },
+    {
+      id: 4,
+      title: 'Zen and the Art of Archery',
+    },
+  ]);
+});
+
 function macroApplyFacetFilters(
   t: ExecutionContext,
   facetFilters: FacetFilter[],
@@ -57,6 +87,15 @@ function macroApplyFacetFilters(
   const minifacet = new MiniFacet({
     fields: ['title', 'text'],
     facetingFields: facetingFields,
+    storedField: [
+      'id',
+      'title',
+      'text',
+      'category',
+      'random',
+      'review',
+      'tags',
+    ],
   });
 
   minifacet.add(documents);
@@ -153,6 +192,15 @@ function macroComputeFacetDistribution(
   const minifacet = new MiniFacet({
     fields: ['title', 'text'],
     facetingFields: attr,
+    storedField: [
+      'id',
+      'title',
+      'text',
+      'category',
+      'random',
+      'review',
+      'tags',
+    ],
   });
   minifacet.add(documents);
   minifacet.compile();
@@ -219,10 +267,7 @@ test(
   }
 );
 
-function shallowEqual(
-  object1: SearchResult<Indexable>,
-  object2: SearchResult<Indexable>
-) {
+function shallowEqual(object1: SearchResult, object2: SearchResult) {
   if (object1.score !== object2.score) {
     return false;
   }
@@ -246,8 +291,18 @@ function shallowEqual(
 test('indexToSearchResult', (t) => {
   const minifacet = new MiniFacet({
     fields: ['title', 'text'],
+    storedField: [
+      'id',
+      'title',
+      'text',
+      'category',
+      'random',
+      'review',
+      'tags',
+    ],
     facetingFields: ['category', 'random', 'review'],
   });
+
   minifacet.add(documents);
   minifacet.compile();
 
@@ -256,7 +311,7 @@ test('indexToSearchResult', (t) => {
 
   t.deepEqual(searchResults.length, 4);
 
-  const expectedResults: SearchResult<Indexable>[] = documents.map((d) => {
+  const expectedResults: SearchResult[] = documents.map((d) => {
     return {
       score: 1,
       data: d,

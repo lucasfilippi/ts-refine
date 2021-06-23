@@ -157,10 +157,10 @@ export class MiniFacet<T extends Indexable> {
     }
   }
 
-  applyFacetFilters(
+  async applyFacetFilters(
     on: TypedFastBitSet,
     facetFilters: FacetFilter[]
-  ): TypedFastBitSet {
+  ): Promise<TypedFastBitSet> {
     const hits = on.clone();
     // get all facetIndexesId
     const facetIndexesIds = facetFilters.map((f) => f.facetIds());
@@ -184,7 +184,9 @@ export class MiniFacet<T extends Indexable> {
     return hits;
   }
 
-  protected fullTextSearch(options: FullTextSearchOptions): TypedFastBitSet {
+  protected async fullTextSearch(
+    options: FullTextSearchOptions
+  ): Promise<TypedFastBitSet> {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const results = this.minisearch!.search(options.query, options);
 
@@ -261,20 +263,26 @@ export class MiniFacet<T extends Indexable> {
     );
   }
 
-  search(options: SearchOptions = {}): FacetedSearchResult {
-    let matches: TypedFastBitSet = new TypedFastBitSet([...this.db.keys()]);
+  async search(options: SearchOptions = {}): Promise<FacetedSearchResult> {
+    const promises: Promise<TypedFastBitSet>[] = [];
+    const matches = new TypedFastBitSet([...this.db.keys()]);
 
     if (options.facetFilters && options.facetFilters.length > 0) {
-      matches = this.applyFacetFilters(matches, options.facetFilters);
+      promises.push(this.applyFacetFilters(matches, options.facetFilters));
     }
 
     if (options.fullTextSearchOptions && this.minisearch) {
-      const fullTextMatches = this.fullTextSearch(
-        options.fullTextSearchOptions
-      );
-      matches.intersection(fullTextMatches);
+      promises.push(this.fullTextSearch(options.fullTextSearchOptions));
     }
     // TODO add Geo search
+
+    if (promises.length > 0) {
+      const bitsets = await Promise.all(promises);
+
+      for (const bitset of bitsets) {
+        matches.intersection(bitset);
+      }
+    }
 
     const results: FacetedSearchResult = {
       hits: this.indexToSearchResult(matches),

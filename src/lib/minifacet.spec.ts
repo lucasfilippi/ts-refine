@@ -82,7 +82,7 @@ test('compile', (t) => {
   ]);
 });
 
-function macroApplyFacetFilters(
+async function macroApplyFacetFilters(
   t: ExecutionContext,
   facetFilters: FacetFilter[],
   facetingFields: string[],
@@ -104,7 +104,7 @@ function macroApplyFacetFilters(
   minifacet.add(documents);
   minifacet.compile();
 
-  const filtered = minifacet.applyFacetFilters(
+  const filtered = await minifacet.applyFacetFilters(
     new TypedFastBitSet([0, 1, 2, 3]),
     facetFilters
   );
@@ -336,7 +336,7 @@ test('indexToSearchResult', (t) => {
   });
 });
 
-test('fullTextSearch', (t) => {
+test('fullTextSearch', async (t) => {
   const minifacet = new MiniFacet({
     storedField: [
       'id',
@@ -358,13 +358,13 @@ test('fullTextSearch', (t) => {
 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
-  const res = minifacet.fullTextSearch({ query: 'zen art motorcycle' });
+  const res = await minifacet.fullTextSearch({ query: 'zen art motorcycle' });
   t.deepEqual(res.size(), 2);
   t.true(res.has(1));
   t.true(res.has(3));
 });
 
-function macroSearch(
+async function macroSearch(
   t: ExecutionContext,
   options: Options<Indexable>,
   searchOptions: SearchOptions,
@@ -375,7 +375,7 @@ function macroSearch(
   minifacet.add(documents);
   minifacet.compile();
 
-  const results = minifacet.search(searchOptions);
+  const results = await minifacet.search(searchOptions);
 
   // t.log(results.hits);
   t.deepEqual(results.hits.length, expected.hits.length);

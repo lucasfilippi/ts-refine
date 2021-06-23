@@ -158,9 +158,10 @@ export class MiniFacet<T extends Indexable> {
   }
 
   applyFacetFilters(
-    hits: TypedFastBitSet,
+    on: TypedFastBitSet,
     facetFilters: FacetFilter[]
   ): TypedFastBitSet {
+    const hits = on.clone();
     // get all facetIndexesId
     const facetIndexesIds = facetFilters.map((f) => f.facetIds());
 
@@ -183,14 +184,11 @@ export class MiniFacet<T extends Indexable> {
     return hits;
   }
 
-  applyFullTextSearch(options: FullTextSearchOptions): TypedFastBitSet {
-    if (this.minisearch) {
-      const results = this.minisearch.search(options.query, options);
+  protected fullTextSearch(options: FullTextSearchOptions): TypedFastBitSet {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const results = this.minisearch!.search(options.query, options);
 
-      return new TypedFastBitSet(results.map((r) => r.id));
-    }
-    // if minisearch is not defined, we return an empty bitset
-    return new TypedFastBitSet();
+    return new TypedFastBitSet(results.map((r) => r.id));
   }
 
   computeFacetDistribution(
@@ -264,19 +262,24 @@ export class MiniFacet<T extends Indexable> {
   }
 
   search(options: SearchOptions = {}): FacetedSearchResult {
-    const match: TypedFastBitSet = new TypedFastBitSet([...this.db.keys()]);
+    let matches: TypedFastBitSet = new TypedFastBitSet([...this.db.keys()]);
 
     if (options.facetFilters && options.facetFilters.length > 0) {
-      this.applyFacetFilters(match, options.facetFilters);
+      matches = this.applyFacetFilters(matches, options.facetFilters);
     }
 
-    // TODO add full text search
+    if (options.fullTextSearchOptions && this.minisearch) {
+      const fullTextMatches = this.fullTextSearch(
+        options.fullTextSearchOptions
+      );
+      matches.intersection(fullTextMatches);
+    }
     // TODO add Geo search
 
     const results: FacetedSearchResult = {
-      hits: this.indexToSearchResult(match),
+      hits: this.indexToSearchResult(matches),
       facetsDistribution: this.computeFacetDistribution(
-        match,
+        matches,
         options.facets || this.facetingFields
       ),
     };

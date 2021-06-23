@@ -1,11 +1,14 @@
 import test, { ExecutionContext } from 'ava';
+// import { Options } from 'minisearch';
 import TypedFastBitSet from 'typedfastbitset';
 
 import {
   FacetedSearchResult,
   FacetFilter,
   FacetsDistribution,
+  Indexable,
   MiniFacet,
+  Options,
   Primitives,
   SearchOptions,
   SearchResult,
@@ -14,7 +17,7 @@ import {
 const documents = [
   {
     id: 1,
-    title: 'Zen Mobs Dick',
+    title: 'Mobs Dick',
     text: 'Call me Ishmael. Some years ago...',
     category: 'fiction',
     random: 'toc',
@@ -32,7 +35,7 @@ const documents = [
   },
   {
     id: 3,
-    title: 'Zen Necromancer',
+    title: 'Necromancer',
     text: 'The sky above the port was...',
     category: 'fiction',
     random: 'tac',
@@ -62,7 +65,7 @@ test('compile', (t) => {
   t.deepEqual(minifacet.database, [
     {
       id: 1,
-      title: 'Zen Mobs Dick',
+      title: 'Mobs Dick',
     },
     {
       id: 2,
@@ -70,7 +73,7 @@ test('compile', (t) => {
     },
     {
       id: 3,
-      title: 'Zen Necromancer',
+      title: 'Necromancer',
     },
     {
       id: 4,
@@ -333,14 +336,8 @@ test('indexToSearchResult', (t) => {
   });
 });
 
-function macroSearch(
-  t: ExecutionContext,
-  options: SearchOptions,
-  facetingFields: string[],
-  expected: FacetedSearchResult
-) {
+test('fullTextSearch', (t) => {
   const minifacet = new MiniFacet({
-    facetingFields: facetingFields,
     storedField: [
       'id',
       'title',
@@ -350,13 +347,38 @@ function macroSearch(
       'review',
       'tags',
     ],
+    facetingFields: ['category', 'random', 'review', 'tags'],
+    fullTextOptions: {
+      fields: ['title', 'text'],
+    },
   });
 
   minifacet.add(documents);
   minifacet.compile();
 
-  const results = minifacet.search(options);
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const res = minifacet.fullTextSearch({ query: 'zen art motorcycle' });
+  t.deepEqual(res.size(), 2);
+  t.true(res.has(1));
+  t.true(res.has(3));
+});
 
+function macroSearch(
+  t: ExecutionContext,
+  options: Options<Indexable>,
+  searchOptions: SearchOptions,
+  expected: FacetedSearchResult
+) {
+  const minifacet = new MiniFacet(options);
+
+  minifacet.add(documents);
+  minifacet.compile();
+
+  const results = minifacet.search(searchOptions);
+
+  // t.log(results.hits);
+  t.deepEqual(results.hits.length, expected.hits.length);
   expected.hits.forEach((r) => {
     t.true(results.hits.some((item) => shallowEqual(item, r)));
   });
@@ -364,40 +386,154 @@ function macroSearch(
   t.deepEqual(results.facetsDistribution, expected.facetsDistribution);
 }
 
-test('search all', macroSearch, {}, ['category', 'random', 'review', 'tags'], {
-  hits: [],
-  facetsDistribution: {
-    category: {
-      fiction: 3,
-      'non-fiction': 1,
-    },
-    random: {
-      toc: 2,
-      tic: 1,
-      tac: 1,
-    },
-    review: {
-      bad: 1,
-      good: 2,
-      neutral: 1,
-    },
-    tags: {
-      book: 2,
-      cool: 1,
-      film: 2,
-      motor: 1,
-      dark: 2,
-    },
+test(
+  'search all',
+  macroSearch,
+  {
+    facetingFields: ['category', 'random', 'review', 'tags'],
+    storedField: [
+      'id',
+      'title',
+      'text',
+      'category',
+      'random',
+      'review',
+      'tags',
+    ],
   },
-});
+  {},
+  {
+    hits: [
+      {
+        data: {
+          category: 'fiction',
+          id: 1,
+          random: 'toc',
+          review: 'good',
+          tags: ['book', 'cool'],
+          text: 'Call me Ishmael. Some years ago...',
+          title: 'Mobs Dick',
+        },
+        score: 1,
+      },
+      {
+        data: {
+          category: 'fiction',
+          id: 2,
+          random: 'tic',
+          review: 'good',
+          tags: ['film', 'motor'],
+          text: 'I can see by my watch...',
+          title: 'Zen and the Art of Motorcycle Maintenance',
+        },
+        score: 1,
+      },
+      {
+        data: {
+          category: 'fiction',
+          id: 3,
+          random: 'tac',
+          review: 'neutral',
+          tags: ['book', 'dark'],
+          text: 'The sky above the port was...',
+          title: 'Necromancer',
+        },
+        score: 1,
+      },
+      {
+        data: {
+          category: 'non-fiction',
+          id: 4,
+          random: 'toc',
+          review: 'bad',
+          tags: ['film', 'dark'],
+          text: 'At first sight it must seem...',
+          title: 'Zen and the Art of Archery',
+        },
+        score: 1,
+      },
+    ],
+    facetsDistribution: {
+      category: {
+        fiction: 3,
+        'non-fiction': 1,
+      },
+      random: {
+        toc: 2,
+        tic: 1,
+        tac: 1,
+      },
+      review: {
+        bad: 1,
+        good: 2,
+        neutral: 1,
+      },
+      tags: {
+        book: 2,
+        cool: 1,
+        film: 2,
+        motor: 1,
+        dark: 2,
+      },
+    },
+  }
+);
 
 test(
   'search with facet filters',
   macroSearch,
-  { facetFilters: [new FacetFilter('tags', ['motor', 'book'])] },
-  ['category', 'random', 'review', 'tags'],
   {
-    hits: [],
+    facetingFields: ['category', 'random', 'review', 'tags'],
+    storedField: [
+      'id',
+      'title',
+      'text',
+      'category',
+      'random',
+      'review',
+      'tags',
+    ],
+  },
+  { facetFilters: [new FacetFilter('tags', ['motor', 'book'])] },
+  {
+    hits: [
+      {
+        data: {
+          category: 'fiction',
+          id: 1,
+          random: 'toc',
+          review: 'good',
+          tags: ['book', 'cool'],
+          text: 'Call me Ishmael. Some years ago...',
+          title: 'Mobs Dick',
+        },
+        score: 1,
+      },
+      {
+        data: {
+          category: 'fiction',
+          id: 2,
+          random: 'tic',
+          review: 'good',
+          tags: ['film', 'motor'],
+          text: 'I can see by my watch...',
+          title: 'Zen and the Art of Motorcycle Maintenance',
+        },
+        score: 1,
+      },
+      {
+        data: {
+          category: 'fiction',
+          id: 3,
+          random: 'tac',
+          review: 'neutral',
+          tags: ['book', 'dark'],
+          text: 'The sky above the port was...',
+          title: 'Necromancer',
+        },
+        score: 1,
+      },
+    ],
     facetsDistribution: {
       category: {
         fiction: 3,
@@ -425,10 +561,61 @@ test(
 test(
   'search with facet filters and facet restrictions',
   macroSearch,
-  { facetFilters: [new FacetFilter('tags', ['motor', 'book'])] },
-  ['category', 'tags'],
   {
-    hits: [],
+    facetingFields: ['category', 'random', 'review', 'tags'],
+    storedField: [
+      'id',
+      'title',
+      'text',
+      'category',
+      'random',
+      'review',
+      'tags',
+    ],
+  },
+  {
+    facets: ['category', 'tags'],
+    facetFilters: [new FacetFilter('tags', ['motor', 'book'])],
+  },
+  {
+    hits: [
+      {
+        data: {
+          category: 'fiction',
+          id: 1,
+          random: 'toc',
+          review: 'good',
+          tags: ['book', 'cool'],
+          text: 'Call me Ishmael. Some years ago...',
+          title: 'Mobs Dick',
+        },
+        score: 1,
+      },
+      {
+        data: {
+          category: 'fiction',
+          id: 2,
+          random: 'tic',
+          review: 'good',
+          tags: ['film', 'motor'],
+          text: 'I can see by my watch...',
+          title: 'Zen and the Art of Motorcycle Maintenance',
+        },
+        score: 1,
+      },
+      {
+        data: {
+          category: 'fiction',
+          id: 3,
+          random: 'tac',
+          review: 'neutral',
+          tags: ['book', 'dark'],
+          text: 'The sky above the port was...',
+          title: 'Necromancer',
+        },
+        score: 1,
+      },
+    ],
     facetsDistribution: {
       category: {
         fiction: 3,
@@ -439,6 +626,56 @@ test(
         film: 1,
         motor: 1,
         dark: 1,
+      },
+    },
+  }
+);
+
+test(
+  'search FullText',
+  macroSearch,
+  {
+    facetingFields: ['category', 'random', 'review', 'tags'],
+    storedField: [
+      'id',
+      'title',
+      'text',
+      'category',
+      'random',
+      'review',
+      'tags',
+    ],
+    fullTextOptions: {
+      fields: ['title', 'text'],
+    },
+  },
+  {
+    facets: ['category', 'tags'],
+    facetFilters: [new FacetFilter('tags', ['motor', 'book'])],
+    fullTextSearchOptions: { query: 'zen art motorcycle' },
+  },
+  {
+    hits: [
+      {
+        data: {
+          category: 'fiction',
+          id: 2,
+          random: 'tic',
+          review: 'good',
+          tags: ['film', 'motor'],
+          text: 'I can see by my watch...',
+          title: 'Zen and the Art of Motorcycle Maintenance',
+        },
+        score: 1,
+      },
+    ],
+    facetsDistribution: {
+      category: {
+        fiction: 1,
+      },
+      tags: {
+        film: 1,
+        motor: 1,
       },
     },
   }

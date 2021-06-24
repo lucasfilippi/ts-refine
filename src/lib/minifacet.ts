@@ -1,11 +1,12 @@
 // import { around } from 'geokdbush';
-import KDBush from 'kdbush';
 import MiniSearch, {
   // AsPlainObject,
   Options as MiniSearchOptions,
   SearchOptions as MiniSearchSearchOptions,
 } from 'minisearch';
 import TypedFastBitSet from 'typedfastbitset';
+
+import { GeoKDBush } from './geokdbush';
 
 export type Primitives = string | number | boolean;
 export type Coordinates = [long: number, lat: number];
@@ -46,7 +47,7 @@ enum GeoOperationKind {
 
 export interface GeoOperation {
   kind: GeoOperationKind;
-  execute(index: KDBush<Coordinates>): number[];
+  execute(index: GeoKDBush<Coordinates>): number[];
 }
 
 export class GeoWithinSphere implements GeoOperation {
@@ -59,7 +60,7 @@ export class GeoWithinSphere implements GeoOperation {
     this.radius = radius;
   }
 
-  execute(index: KDBush<Coordinates>): number[] {
+  execute(index: GeoKDBush<Coordinates>): number[] {
     return index.within(this.center[0], this.center[1], this.radius);
   }
 }
@@ -73,24 +74,34 @@ export class GeoWithinBox implements GeoOperation {
     this.max = max;
   }
 
-  execute(index: KDBush<Coordinates>): number[] {
+  execute(index: GeoKDBush<Coordinates>): number[] {
     return index.range(this.min[0], this.min[1], this.max[0], this.max[1]);
   }
 }
 
-// export class GeoAround implements GeoOperation {
-//   kind = GeoOperationKind.GeoAround;
-//   protected center: Coordinates;
-//   protected radius: number;
-//   protected maxResults: number;
+export class GeoAround implements GeoOperation {
+  kind = GeoOperationKind.GeoAround;
+  protected center: Coordinates;
+  protected radius?: number;
+  protected maxResults?: number;
 
-//   constructor(center: Coordinates, radius: number, maxResults: number) {
-//     this.center = center;
-//     this.radius = radius;
-//     this.maxResults = maxResults;
-//   }
+  constructor(center: Coordinates, radius?: number, maxResults?: number) {
+    this.center = center;
+    this.radius = radius;
+    this.maxResults = maxResults;
+  }
 
-//   execute(index: KDBush<Coordinates>): number[] {
+  execute(index: GeoKDBush<Coordinates>): number[] {
+    return index.around(
+      this.center[0],
+      this.center[1],
+      this.maxResults,
+      this.radius
+    );
+  }
+}
+
+//   execute(index: GeoKDBush<Coordinates>): number[] {
 //     return around(
 //       index,
 //       this.center[0],
@@ -144,7 +155,7 @@ export class MiniFacet<T extends Indexable> {
   protected raw: T[];
   protected facetIndexes: Map<string, TypedFastBitSet>;
   protected geoFields: string[];
-  protected geoIndexes: Map<string, KDBush<Coordinates>>;
+  protected geoIndexes: Map<string, GeoKDBush<Coordinates>>;
 
   constructor(options: Options<T>) {
     this.facetingFields = options.facetingFields;
@@ -239,7 +250,7 @@ export class MiniFacet<T extends Indexable> {
     for (const field of this.geoFields) {
       this.geoIndexes.set(
         field,
-        new KDBush<Coordinates>(
+        new GeoKDBush<Coordinates>(
           this.db.map((d) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             return d.raw![field] as Coordinates;
@@ -289,7 +300,7 @@ export class MiniFacet<T extends Indexable> {
   }
 
   protected async geoSearch(
-    index: KDBush<Coordinates>,
+    index: GeoKDBush<Coordinates>,
     operation: GeoOperation
   ): Promise<TypedFastBitSet> {
     return new TypedFastBitSet(operation.execute(index));

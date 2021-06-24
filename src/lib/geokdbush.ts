@@ -105,9 +105,14 @@ export class GeoKDBush<T> extends KDBush<T> {
     return 2 * earthRadius * Math.asin(Math.sqrt(h));
   }
 
-  around(lng: number, lat: number, maxResults?: number, maxDistance?: number) {
+  around(
+    lng: number,
+    lat: number,
+    maxResults?: number,
+    maxDistance?: number
+  ): number[] {
     let maxHaverSinDist = 1;
-    const result = [];
+    const result: number[] = [];
 
     if (maxResults === undefined) maxResults = Infinity;
     if (maxDistance !== undefined)
@@ -218,7 +223,8 @@ export class GeoKDBush<T> extends KDBush<T> {
         const candidate: Node = q.pop() as Node;
 
         if (candidate.dist > maxHaverSinDist) return result;
-        result.push(candidate.id);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        result.push(candidate.id!);
         if (result.length === maxResults) return result;
       }
 

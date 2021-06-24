@@ -1,5 +1,4 @@
 import test, { ExecutionContext } from 'ava';
-// import { Options } from 'minisearch';
 import TypedFastBitSet from 'typedfastbitset';
 
 import {

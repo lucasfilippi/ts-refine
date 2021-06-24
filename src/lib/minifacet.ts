@@ -1,3 +1,5 @@
+// import { around } from 'geokdbush';
+import KDBush from 'kdbush';
 import MiniSearch, {
   // AsPlainObject,
   Options as MiniSearchOptions,
@@ -6,6 +8,7 @@ import MiniSearch, {
 import TypedFastBitSet from 'typedfastbitset';
 
 export type Primitives = string | number | boolean;
+export type Coordinates = [long: number, lat: number];
 
 export class FacetFilter {
   protected name: string;
@@ -28,10 +31,77 @@ export interface Indexable {
 export interface Indexed {
   id: number;
   data: Indexable;
+  raw?: Indexable;
 }
 
 export type FullTextSearchOptions = MiniSearchSearchOptions & {
   query: string;
+};
+
+enum GeoOperationKind {
+  GeoWithinSphere = 1,
+  GeoWithinBox,
+  GeoAround,
+}
+
+export interface GeoOperation {
+  kind: GeoOperationKind;
+  execute(index: KDBush<Coordinates>): number[];
+}
+
+export class GeoWithinSphere implements GeoOperation {
+  kind = GeoOperationKind.GeoWithinSphere;
+  protected center: Coordinates;
+  protected radius: number;
+
+  constructor(center: Coordinates, radius: number) {
+    this.center = center;
+    this.radius = radius;
+  }
+
+  execute(index: KDBush<Coordinates>): number[] {
+    return index.within(this.center[0], this.center[1], this.radius);
+  }
+}
+export class GeoWithinBox implements GeoOperation {
+  kind = GeoOperationKind.GeoWithinBox;
+  protected min: Coordinates;
+  protected max: Coordinates;
+
+  constructor(min: Coordinates, max: Coordinates) {
+    this.min = min;
+    this.max = max;
+  }
+
+  execute(index: KDBush<Coordinates>): number[] {
+    return index.range(this.min[0], this.min[1], this.max[0], this.max[1]);
+  }
+}
+
+// export class GeoAround implements GeoOperation {
+//   kind = GeoOperationKind.GeoAround;
+//   protected center: Coordinates;
+//   protected radius: number;
+//   protected maxResults: number;
+
+//   constructor(center: Coordinates, radius: number, maxResults: number) {
+//     this.center = center;
+//     this.radius = radius;
+//     this.maxResults = maxResults;
+//   }
+
+//   execute(index: KDBush<Coordinates>): number[] {
+//     return around(
+//       index,
+//       this.center[0],
+//       this.center[1],
+//       this.maxResults,
+//       this.radius
+//     );
+//   }
+// }
+export type GeoSearchOptions = {
+  [field: string]: GeoOperation;
 };
 
 export type SearchOptions = {
@@ -41,6 +111,7 @@ export type SearchOptions = {
   facetFilters?: FacetFilter[];
   // Specify a full text search
   fullTextSearchOptions?: FullTextSearchOptions;
+  geoSearchOptions?: GeoSearchOptions;
 };
 
 export type FacetsDistribution = {
@@ -59,21 +130,25 @@ export type FacetedSearchResult = {
 
 export type Options<T> = {
   facetingFields: string[];
-  storedField: string[];
+  storedFields: string[];
   fullTextOptions?: MiniSearchOptions<T>;
+  //Each geoField must be a Coordinates instance
+  geoFields?: string[];
 };
 
 export class MiniFacet<T extends Indexable> {
   protected minisearch?: MiniSearch;
   protected facetingFields: string[];
-  protected storedField: string[];
+  protected storedFields: string[];
   protected db: Indexed[];
   protected raw: T[];
   protected facetIndexes: Map<string, TypedFastBitSet>;
+  protected geoFields: string[];
+  protected geoIndexes: Map<string, KDBush<Coordinates>>;
 
   constructor(options: Options<T>) {
     this.facetingFields = options.facetingFields;
-    this.storedField = options.storedField.filter(
+    this.storedFields = options.storedFields.filter(
       (f) => !this.facetingFields.includes(f)
     );
     // minisearch do not store any data
@@ -87,6 +162,9 @@ export class MiniFacet<T extends Indexable> {
     this.db = [];
     this.raw = [];
     this.facetIndexes = new Map();
+
+    this.geoFields = options.geoFields || [];
+    this.geoIndexes = new Map();
   }
 
   get database(): Indexable[] {
@@ -137,13 +215,14 @@ export class MiniFacet<T extends Indexable> {
     // filter raw to store in db
     this.db = this.raw.map((d, i) => {
       const o = Object.keys(d)
-        .filter((key) => this.storedField.includes(key))
+        .filter((key) => this.storedFields.includes(key))
         .reduce((obj: Indexable, key) => {
           obj[key] = d[key];
           return obj as T;
         }, {});
-      return { id: i, data: o };
+      return { id: i, data: o, raw: d };
     });
+
     // reset raw
     this.raw = [];
 
@@ -151,10 +230,26 @@ export class MiniFacet<T extends Indexable> {
     if (this.minisearch) {
       this.minisearch.addAll(
         this.db.map((indexed) => {
-          return { ...indexed.data, _minifacetId: indexed.id };
+          return { ...indexed.raw, _minifacetId: indexed.id };
         })
       );
     }
+
+    // Add to geo indexes
+    for (const field of this.geoFields) {
+      this.geoIndexes.set(
+        field,
+        new KDBush<Coordinates>(
+          this.db.map((d) => {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            return d.raw![field] as Coordinates;
+          })
+        )
+      );
+    }
+
+    // cleanup db from raw fields
+    this.db.forEach((d) => delete d.raw);
   }
 
   async applyFacetFilters(
@@ -191,6 +286,13 @@ export class MiniFacet<T extends Indexable> {
     const results = this.minisearch!.search(options.query, options);
 
     return new TypedFastBitSet(results.map((r) => r.id));
+  }
+
+  protected async geoSearch(
+    index: KDBush<Coordinates>,
+    operation: GeoOperation
+  ): Promise<TypedFastBitSet> {
+    return new TypedFastBitSet(operation.execute(index));
   }
 
   computeFacetDistribution(
@@ -274,7 +376,19 @@ export class MiniFacet<T extends Indexable> {
     if (options.fullTextSearchOptions && this.minisearch) {
       promises.push(this.fullTextSearch(options.fullTextSearchOptions));
     }
-    // TODO add Geo search
+
+    if (options.geoSearchOptions) {
+      for (const [indexName, geoOperation] of Object.entries(
+        options.geoSearchOptions
+      )) {
+        if (this.geoIndexes.has(indexName)) {
+          promises.push(
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            this.geoSearch(this.geoIndexes.get(indexName)!, geoOperation)
+          );
+        }
+      }
+    }
 
     if (promises.length > 0) {
       const bitsets = await Promise.all(promises);

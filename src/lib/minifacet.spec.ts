@@ -838,3 +838,13 @@ test(
   },
   pointOfInterest
 );
+
+test('serialization', async (t) => {
+  const m: Map<string, string> = new Map();
+  m.set('ta', 'ta');
+  m.set('to', 'to');
+  m.set('ti', 'ti');
+  m.set('tu', 'tu');
+  t.log(JSON.stringify(m));
+  t.pass();
+});

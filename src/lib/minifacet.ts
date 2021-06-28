@@ -1,6 +1,4 @@
-// import { around } from 'geokdbush';
 import MiniSearch, {
-  // AsPlainObject,
   Options as MiniSearchOptions,
   SearchOptions as MiniSearchSearchOptions,
 } from 'minisearch';
@@ -9,27 +7,11 @@ import TypedFastBitSet from 'typedfastbitset';
 import { GeoKDBush } from './geokdbush';
 
 export type Primitives = string | number | boolean;
-export type Coordinates = [long: number, lat: number];
-
-export class FacetFilter {
-  protected name: string;
-  protected values: Primitives[];
-
-  constructor(name: string, values: Primitives[]) {
-    this.name = name;
-    this.values = values;
-  }
-
-  facetIds(): string[] {
-    return this.values.map((v) => `${this.name}:${v}`);
-  }
-}
-
 export interface Indexable {
   [attr: string]: Primitives | Primitives[];
 }
 
-export interface Indexed {
+interface Indexed {
   id: number;
   data: Indexable;
   raw?: Indexable;
@@ -38,6 +20,9 @@ export interface Indexed {
 export type FullTextSearchOptions = MiniSearchSearchOptions & {
   query: string;
 };
+
+/* GEO START */
+export type Coordinates = [long: number, lat: number];
 
 enum GeoOperationKind {
   GeoWithinSphere = 1,
@@ -101,20 +86,24 @@ export class GeoAround implements GeoOperation {
   }
 }
 
-//   execute(index: GeoKDBush<Coordinates>): number[] {
-//     return around(
-//       index,
-//       this.center[0],
-//       this.center[1],
-//       this.maxResults,
-//       this.radius
-//     );
-//   }
-// }
 export type GeoSearchOptions = {
   [field: string]: GeoOperation;
 };
+/* GEO END */
 
+export class FacetFilter {
+  protected name: string;
+  protected values: Primitives[];
+
+  constructor(name: string, values: Primitives[]) {
+    this.name = name;
+    this.values = values;
+  }
+
+  facetIds(): string[] {
+    return this.values.map((v) => `${this.name}:${v}`);
+  }
+}
 export type SearchOptions = {
   // Return only this facet. If not specified every available facet will be computed
   readonly facets?: string[];
@@ -139,6 +128,7 @@ export type FacetedSearchResult = {
   readonly facetsDistribution: FacetsDistribution;
 };
 
+// Option construct
 export type Options<T> = {
   facetingFields: string[];
   storedFields: string[];
@@ -149,10 +139,10 @@ export type Options<T> = {
 
 export class MiniFacet<T extends Indexable> {
   protected minisearch?: MiniSearch;
-  protected facetingFields: string[];
   protected storedFields: string[];
   protected db: Indexed[];
   protected raw: T[];
+  protected facetingFields: string[];
   protected facetIndexes: Map<string, TypedFastBitSet>;
   protected geoFields: string[];
   protected geoIndexes: Map<string, GeoKDBush<Coordinates>>;
@@ -308,14 +298,14 @@ export class MiniFacet<T extends Indexable> {
 
   computeFacetDistribution(
     hits: TypedFastBitSet,
-    facetingFields: string[]
+    fields: string[]
   ): FacetsDistribution {
     const indexes = new Map();
 
     for (const [key, idx] of this.facetIndexes) {
       const [field, value] = key.split(':', 2);
 
-      if (facetingFields.includes(field)) {
+      if (fields.includes(field)) {
         if (!indexes.has(field)) {
           indexes.set(field, new Map());
         }
@@ -325,7 +315,7 @@ export class MiniFacet<T extends Indexable> {
     }
 
     const distribution: FacetsDistribution = Object.fromEntries(
-      facetingFields.map((field: string) => {
+      fields.map((field: string) => {
         const dist: { [facetValue: string]: number } = {};
 
         if (indexes.has(field)) {

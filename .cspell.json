@@ -12,6 +12,8 @@
         "commitlint",
         "dependabot",
         "editorconfig",
+        "Embexed",
+        "Emdexed",
         "esnext",
         "execa",
         "exponentiate",

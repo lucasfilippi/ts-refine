@@ -16,18 +16,13 @@ const indexableCodec = t.record(
 );
 export type Indexable = t.TypeOf<typeof indexableCodec>;
 
-export type Indexed = {
-  id: number;
-  data: Indexable;
-};
-
 export type BuilderOptions = {
   storedFields?: string[];
 };
 
 // SEARCH
 export type Metadata = {
-  [metadata: string]: number | string | boolean;
+  [metadata: string]: number | string | boolean | Metadata;
 };
 
 export function mergeMetadata(m1: Metadata, m2: Metadata): Metadata {
@@ -41,6 +36,7 @@ export type IndexSearchResult = {
 };
 
 export type Hit = {
+  internalId: number;
   data: Indexable;
   meta?: Metadata;
 };
@@ -57,8 +53,12 @@ export type SearchOption = {
 export interface Index {
   // add some documents to the index
   build(documents: Indexable[]): void;
-  search(options: unknown): Promise<IndexSearchResult>;
-  postProcess?(results: SearchResult): SearchResult;
+  search(on: TypedFastBitSet, options: unknown): Promise<IndexSearchResult>;
+  postProcess?(
+    on: TypedFastBitSet,
+    results: SearchResult,
+    options: unknown
+  ): SearchResult;
   serialize(): string;
   key: string;
 }
@@ -78,8 +78,10 @@ export class Embexed {
 
     Object.keys(options).forEach((key) => {
       if (this.indexes.has(key)) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        promises.push(this.indexes.get(key)!.search(options[key]));
+        promises.push(
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          this.indexes.get(key)!.search(matches.clone(), options[key])
+        );
       }
     });
 
@@ -113,6 +115,7 @@ export class Embexed {
     let results: SearchResult = {
       hits: matches.array().map((i) => {
         return {
+          internalId: i,
           data: this.datastore[i],
           meta: metadata.get(i),
         };
@@ -127,7 +130,11 @@ export class Embexed {
         this.indexes.get(key)!.postProcess !== undefined
       ) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        results = this.indexes.get(key)!.postProcess!(results);
+        results = this.indexes.get(key)!.postProcess!(
+          matches,
+          results,
+          options[key]
+        );
       }
     });
     return results;

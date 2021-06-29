@@ -53,7 +53,7 @@ class IdentityIndex implements Index {
     };
   }
 
-  postProcess(results: SearchResult): SearchResult {
+  postProcess(_on: TypedFastBitSet, results: SearchResult): SearchResult {
     results.meta.set('ident', { i1: 'value2', i2: 2 });
     return results;
   }
@@ -84,7 +84,7 @@ class EvenIndex implements Index {
     };
   }
 
-  postProcess(results: SearchResult): SearchResult {
+  postProcess(_on: TypedFastBitSet, results: SearchResult): SearchResult {
     results.meta.set('even', { m1: 'value1', m2: 1 });
     return results;
   }

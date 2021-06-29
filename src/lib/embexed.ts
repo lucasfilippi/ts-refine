@@ -21,6 +21,10 @@ export type Indexed = {
   data: Indexable;
 };
 
+export type BuilderOptions = {
+  storedFields?: string[];
+};
+
 // SEARCH
 export type Metadata = {
   [metadata: string]: number | string | boolean;
@@ -32,8 +36,8 @@ export function mergeMetadata(m1: Metadata, m2: Metadata): Metadata {
 
 export type IndexSearchResult = {
   ids: TypedFastBitSet;
-  resultMetadata?: Map<number, Metadata>; // ids indexed metadata
-  searchMetadata?: Map<string, Metadata>; // Global metadata indexed by key to use in SearchResults
+  metadata?: Map<number, Metadata>; // ids indexed metadata
+  // searchMetadata?: Map<string, Metadata>; // Global metadata indexed by key to use in SearchResults
 };
 
 export type Hit = {
@@ -54,6 +58,7 @@ export interface Index {
   // add some documents to the index
   build(documents: Indexable[]): void;
   search(options: unknown): Promise<IndexSearchResult>;
+  postProcess?(results: SearchResult): SearchResult;
   serialize(): string;
   key: string;
 }
@@ -78,50 +83,53 @@ export class Embexed {
       }
     });
 
-    const metadata = new Map();
-    const resultMetadata: Map<number, Metadata> = new Map();
+    const metadata: Map<number, Metadata> = new Map();
 
     if (promises.length > 0) {
       const results = await Promise.all(promises);
 
       for (const r of results) {
         //validate metada is not present or same as ids
-        if (!r.resultMetadata || r.ids.size() === r.resultMetadata.size) {
+        if (!r.metadata || r.ids.size() === r.metadata.size) {
           matches.intersection(r.ids);
 
-          if (r.resultMetadata) {
-            for (const [id, meta] of r.resultMetadata) {
-              if (resultMetadata.has(id)) {
-                resultMetadata.set(
+          if (r.metadata) {
+            for (const [id, meta] of r.metadata) {
+              if (metadata.has(id)) {
+                metadata.set(
                   id,
                   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  mergeMetadata(resultMetadata.get(id)!, meta)
+                  mergeMetadata(metadata.get(id)!, meta)
                 );
               } else {
-                resultMetadata.set(id, meta);
+                metadata.set(id, meta);
               }
-            }
-          }
-
-          if (r.searchMetadata) {
-            for (const [key, value] of r.searchMetadata) {
-              metadata.set(key, value);
             }
           }
         }
       }
     }
 
-    const results: SearchResult = {
+    let results: SearchResult = {
       hits: matches.array().map((i) => {
         return {
           data: this.datastore[i],
-          meta: resultMetadata.get(i),
+          meta: metadata.get(i),
         };
       }),
-      meta: metadata,
+      // meta: metadata,
     };
 
+    Object.keys(options).forEach((key) => {
+      if (
+        this.indexes.has(key) &&
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        this.indexes.get(key)!.postProcess !== undefined
+      ) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        results = this.indexes.get(key)!.postProcess!(results);
+      }
+    });
     return results;
   }
 
@@ -133,10 +141,12 @@ export class Embexed {
 export class Builder {
   protected indexes: Index[];
   protected datastore: Indexable[];
+  protected storedFields?: string[];
 
-  constructor() {
+  constructor(options?: BuilderOptions) {
     this.indexes = [];
     this.datastore = [];
+    this.storedFields = options?.storedFields;
   }
 
   addIndex(index: Index) {
@@ -154,6 +164,24 @@ export class Builder {
       i.build(this.datastore);
       indexes.set(i.key, i);
     });
+
+    // filter datastore fields if necessary
+    if (this.storedFields && this.storedFields.length > 0) {
+      return new Embexed(
+        this.datastore.map((d) => {
+          return (
+            Object.keys(d)
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              .filter((key) => this.storedFields!.includes(key))
+              .reduce((obj: Indexable, key) => {
+                obj[key] = d[key];
+                return obj;
+              }, {})
+          );
+        }),
+        indexes
+      );
+    }
 
     return new Embexed(this.datastore, indexes);
   }

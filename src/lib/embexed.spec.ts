@@ -1,7 +1,13 @@
 import test from 'ava';
 import TypedFastBitSet from 'typedfastbitset';
 
-import { Builder, Index, Indexable, IndexSearchResult } from './embexed';
+import {
+  Builder,
+  Index,
+  Indexable,
+  IndexSearchResult,
+  Metadata,
+} from './embexed';
 
 function shallowEqual(object1: Indexable, object2: Indexable) {
   const keys1 = Object.keys(object1);
@@ -39,8 +45,7 @@ class IdentityIndex implements Index {
   async search(): Promise<IndexSearchResult> {
     return {
       ids: this.index,
-      // resultMetadata?: Map<number, Metadata>; // ids indexed metadata
-      // searchMetadata?: Map<string, Metadata>; // Global metadata indexed by key to use in SearchResults
+      // metadata?: Map<number, Metadata>; // ids indexed metadata
     };
   }
   serialize(): string {
@@ -59,10 +64,34 @@ class EvenIndex implements Index {
   }
 
   async search(): Promise<IndexSearchResult> {
+    const metadata = new Map<number, Metadata>();
+
+    this.index.array().forEach((i) => metadata.set(i, { dumb: 1 }));
+
     return {
       ids: this.index,
-      // resultMetadata?: Map<number, Metadata>; // ids indexed metadata
-      // searchMetadata?: Map<string, Metadata>; // Global metadata indexed by key to use in SearchResults
+      metadata: metadata, // ids indexed metadata
+    };
+  }
+  serialize(): string {
+    return '';
+  }
+}
+
+class OddIndex implements Index {
+  key = 'odd';
+  index: TypedFastBitSet = new TypedFastBitSet();
+
+  build(documents: Indexable[]): void {
+    this.index = new TypedFastBitSet(
+      [...documents.keys()].filter((k) => k % 2 === 1)
+    );
+  }
+
+  async search(): Promise<IndexSearchResult> {
+    return {
+      ids: this.index,
+      // metadata?: Map<number, Metadata>; // ids indexed metadata
     };
   }
   serialize(): string {
@@ -121,7 +150,60 @@ const pointOfInterest = [
   },
 ];
 
-test('embexed build and basic search', async (t) => {
+test('embexed build', async (t) => {
+  const builder = new Builder({ storedFields: ['name', 'tags'] });
+  builder.addIndex(new IdentityIndex());
+
+  builder.addDocuments(pointOfInterest);
+  const embexed = builder.build();
+  const all = await embexed.search({
+    identity: {},
+  });
+  t.deepEqual(all.hits.length, pointOfInterest.length);
+
+  const filteredPointOfInterest = [
+    {
+      name: 'Le louvre',
+      tags: ['museum', 'monument'],
+    },
+    {
+      name: 'Arc de Triomphe',
+      tags: ['monument'],
+    },
+    {
+      name: 'Le sacré coeur',
+      tags: ['monument', 'church'],
+    },
+    {
+      name: 'Père-lachaise',
+      tags: ['place', 'graveyard'],
+    },
+    {
+      name: 'Disneyland paris',
+      tags: ['park', 'amusement'],
+    },
+    {
+      name: 'Notre dame de reims',
+      tags: ['church'],
+    },
+    {
+      name: 'Memorial Verdun',
+      tags: ['place', 'graveyard'],
+    },
+    {
+      name: 'Notre dame de Strasbourg',
+      tags: ['church'],
+    },
+  ];
+
+  all.hits.forEach((hit) => {
+    t.true(
+      filteredPointOfInterest.some((item) => shallowEqual(item, hit.data))
+    );
+  });
+});
+
+test('embexed basic search', async (t) => {
   const builder = new Builder();
   builder.addIndex(new IdentityIndex());
   builder.addIndex(new EvenIndex());
@@ -145,6 +227,7 @@ test('embexed build and basic search', async (t) => {
   t.deepEqual(even.hits.length, pointOfInterest.length / 2);
   even.hits.forEach((hit) => {
     t.true(pointOfInterest.some((item) => shallowEqual(item, hit.data)));
+    t.deepEqual(hit.meta, { dumb: 1 });
   });
 
   const both = await embexed.search({

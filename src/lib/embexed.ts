@@ -22,7 +22,13 @@ export type BuilderOptions = {
 
 // SEARCH
 export type Metadata = {
-  [metadata: string]: number | string | boolean | Metadata;
+  [metadata: string]:
+    | number
+    | string
+    | boolean
+    | string[]
+    | number[]
+    | Metadata;
 };
 
 export function mergeMetadata(m1: Metadata, m2: Metadata): Metadata {

@@ -1,4 +1,4 @@
-import test, { ExecutionContext } from 'ava';
+import test from 'ava';
 import TypedFastBitSet from 'typedfastbitset';
 
 import { GeoIndex, GeoWithinBox } from './geoindex';

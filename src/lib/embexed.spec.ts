@@ -7,6 +7,7 @@ import {
   Indexable,
   IndexSearchResult,
   Metadata,
+  SearchResult,
 } from './embexed';
 
 function shallowEqual(object1: Indexable, object2: Indexable) {
@@ -43,11 +44,20 @@ class IdentityIndex implements Index {
   }
 
   async search(): Promise<IndexSearchResult> {
+    const metadata = new Map<number, Metadata>();
+
+    this.index.array().forEach((i) => metadata.set(i, { dumber: 1 }));
     return {
       ids: this.index,
-      // metadata?: Map<number, Metadata>; // ids indexed metadata
+      metadata: metadata,
     };
   }
+
+  postProcess(results: SearchResult): SearchResult {
+    results.meta.set('ident', { i1: 'value2', i2: 2 });
+    return results;
+  }
+
   serialize(): string {
     return '';
   }
@@ -73,27 +83,12 @@ class EvenIndex implements Index {
       metadata: metadata, // ids indexed metadata
     };
   }
-  serialize(): string {
-    return '';
-  }
-}
 
-class OddIndex implements Index {
-  key = 'odd';
-  index: TypedFastBitSet = new TypedFastBitSet();
-
-  build(documents: Indexable[]): void {
-    this.index = new TypedFastBitSet(
-      [...documents.keys()].filter((k) => k % 2 === 1)
-    );
+  postProcess(results: SearchResult): SearchResult {
+    results.meta.set('even', { m1: 'value1', m2: 1 });
+    return results;
   }
 
-  async search(): Promise<IndexSearchResult> {
-    return {
-      ids: this.index,
-      // metadata?: Map<number, Metadata>; // ids indexed metadata
-    };
-  }
   serialize(): string {
     return '';
   }
@@ -203,6 +198,42 @@ test('embexed build', async (t) => {
   });
 });
 
+test('embexed no index', async (t) => {
+  const builder = new Builder();
+  builder.addIndex(new IdentityIndex());
+  builder.addIndex(new EvenIndex());
+
+  builder.addDocuments(pointOfInterest);
+  const embexed = builder.build();
+
+  const all = await embexed.search({});
+
+  t.deepEqual(all.hits.length, pointOfInterest.length);
+  all.hits.forEach((hit) => {
+    t.true(pointOfInterest.some((item) => shallowEqual(item, hit.data)));
+  });
+
+  t.deepEqual(all.meta.size, 0);
+});
+
+test('embexed invalid index', async (t) => {
+  const builder = new Builder();
+  builder.addIndex(new IdentityIndex());
+  builder.addIndex(new EvenIndex());
+
+  builder.addDocuments(pointOfInterest);
+  const embexed = builder.build();
+
+  const all = await embexed.search({ inexistent: {} });
+
+  t.deepEqual(all.hits.length, pointOfInterest.length);
+  all.hits.forEach((hit) => {
+    t.true(pointOfInterest.some((item) => shallowEqual(item, hit.data)));
+  });
+
+  t.deepEqual(all.meta.size, 0);
+});
+
 test('embexed basic search', async (t) => {
   const builder = new Builder();
   builder.addIndex(new IdentityIndex());
@@ -238,5 +269,11 @@ test('embexed basic search', async (t) => {
   t.deepEqual(both.hits.length, pointOfInterest.length / 2);
   both.hits.forEach((hit) => {
     t.true(pointOfInterest.some((item) => shallowEqual(item, hit.data)));
+    t.deepEqual(hit.meta, { dumb: 1, dumber: 1 });
   });
+
+  t.true(both.meta.has('even'));
+  t.true(both.meta.has('ident'));
+  t.deepEqual(both.meta.get('even'), { m1: 'value1', m2: 1 });
+  t.deepEqual(both.meta.get('ident'), { i1: 'value2', i2: 2 });
 });

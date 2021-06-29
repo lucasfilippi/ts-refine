@@ -47,7 +47,7 @@ export type Hit = {
 
 export type SearchResult = {
   hits: Hit[];
-  meta?: Map<string, Metadata>; // Union of IndexSearchResult.searchMetadata
+  meta: Map<string, Metadata>; // Union of IndexSearchResult.searchMetadata
 };
 
 export type SearchOption = {
@@ -117,7 +117,7 @@ export class Embexed {
           meta: metadata.get(i),
         };
       }),
-      // meta: metadata,
+      meta: new Map(),
     };
 
     Object.keys(options).forEach((key) => {

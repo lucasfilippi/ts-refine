@@ -32,16 +32,10 @@ export class Filter {
 export type SearchOptions = {
   filters?: Filter[];
   distributionFields?: string[];
-  addFields?: boolean;
 };
 
 export type Distribution = {
   readonly [facetName: string]: { [facetValue: string]: number };
-};
-
-type IndexKey = {
-  field: string;
-  value: string | number | boolean;
 };
 
 export class FacettingIndex implements Index {
@@ -144,59 +138,6 @@ export class FacettingIndex implements Index {
 
     results.meta.set('facetting_distribution', distribution);
 
-    // Add faceted attributes
-    if (options.addFields === true) {
-      results.hits.forEach((hit) => {
-        for (const [key, idx] of this.facetIndexes) {
-          if (idx.has(hit.internalId)) {
-            const [field, value] = key.split(':', 2);
-
-            if (hit.data[field]) {
-              if (Array.isArray(hit.data[field])) {
-                (hit.data[field] as Array<Primitives>).push(value);
-              } else {
-                hit.data[field] = [hit.data[field] as Primitives, value];
-              }
-            } else {
-              hit.data[field] = value;
-            }
-          }
-        }
-      });
-    }
-    /*
-    return (
-      this.db
-        // use only idx in index
-        .filter((_, i) => index.has(i))
-        // Add Facet from facetIndexes
-        .map((indexed) => {
-          for (const [key, idx] of this.facetIndexes) {
-            if (idx.has(indexed.id)) {
-              const [field, value] = key.split(':', 2);
-
-              if (indexed.data[field]) {
-                if (Array.isArray(indexed.data[field])) {
-                  (indexed.data[field] as Array<Primitives>).push(value);
-                } else {
-                  indexed.data[field] = [
-                    indexed.data[field] as Primitives,
-                    value,
-                  ];
-                }
-              } else {
-                indexed.data[field] = value;
-              }
-            }
-          }
-          return indexed;
-        })
-        // build SearchResult object
-        .map((d) => {
-          return { score: 1, data: d.data };
-        })
-    );
-    */
     return results;
   }
 

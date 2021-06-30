@@ -147,8 +147,7 @@ test('embexed build', async (t) => {
   const builder = new Builder({ storedFields: ['name', 'tags'] });
   builder.addIndex('identity', new IdentityIndex());
 
-  builder.addDocuments(pointOfInterest);
-  const embexed = builder.build();
+  const embexed = builder.build(pointOfInterest);
   const all = await embexed.search({
     identity: {},
   });
@@ -201,8 +200,7 @@ test('embexed no index', async (t) => {
   builder.addIndex('identity', new IdentityIndex());
   builder.addIndex('even', new EvenIndex());
 
-  builder.addDocuments(pointOfInterest);
-  const embexed = builder.build();
+  const embexed = builder.build(pointOfInterest);
 
   const all = await embexed.search({});
 
@@ -219,8 +217,7 @@ test('embexed invalid index', async (t) => {
   builder.addIndex('identity', new IdentityIndex());
   builder.addIndex('even', new EvenIndex());
 
-  builder.addDocuments(pointOfInterest);
-  const embexed = builder.build();
+  const embexed = builder.build(pointOfInterest);
 
   const all = await embexed.search({ inexistent: {} });
 
@@ -237,8 +234,7 @@ test('embexed basic search', async (t) => {
   builder.addIndex('identity', new IdentityIndex());
   builder.addIndex('even', new EvenIndex());
 
-  builder.addDocuments(pointOfInterest);
-  const embexed = builder.build();
+  const embexed = builder.build(pointOfInterest);
 
   const all = await embexed.search({
     identity: {},

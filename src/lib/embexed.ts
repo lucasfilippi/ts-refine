@@ -66,7 +66,6 @@ export interface Index {
     options: unknown
   ): SearchResult;
   // toJSON(): string;
-  // key: string;
 }
 
 export class Embexed {
@@ -164,12 +163,10 @@ export class Embexed {
 
 export class Builder {
   protected indexes: Map<string, Index>;
-  protected datastore: Indexable[];
   protected storedFields?: string[];
 
   constructor(options?: BuilderOptions) {
     this.indexes = new Map();
-    this.datastore = [];
     this.storedFields = options?.storedFields;
   }
 
@@ -181,24 +178,22 @@ export class Builder {
     this.indexes.set(key, index);
   }
 
-  addDocuments(documents: Indexable[]): void {
+  build(documents: Indexable[]): Embexed {
+    const datastore: Indexable[] = [];
     for (const d of documents) {
-      this.datastore.push(d);
+      datastore.push(d);
     }
-  }
-
-  build(): Embexed {
     const indexes = new Map();
 
     for (const [key, i] of this.indexes) {
-      i.build(this.datastore);
+      i.build(datastore);
       indexes.set(key, i);
     }
 
     // filter datastore fields if necessary
     if (this.storedFields && this.storedFields.length > 0) {
       return new Embexed(
-        this.datastore.map((d) => {
+        datastore.map((d) => {
           return (
             Object.keys(d)
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -213,6 +208,6 @@ export class Builder {
       );
     }
 
-    return new Embexed(this.datastore, indexes);
+    return new Embexed(datastore, indexes);
   }
 }

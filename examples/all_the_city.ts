@@ -32,13 +32,13 @@ builder.addIndex(
   })
 );
 builder.addIndex(
-  'geo_coordinates'
+  'geo_coordinates',
   new GeoIndex({
     field: 'coordinates',
   })
 );
 
-builder.addDocuments(
+const embexed = builder.build(
   all_the_cities.map((city) => {
     return {
       cityId: city.cityId,
@@ -51,7 +51,6 @@ builder.addDocuments(
     };
   })
 );
-const embexed = builder.build();
 
 const all = await embexed.search({
   fulltext: { query: 'an', prefix: true },

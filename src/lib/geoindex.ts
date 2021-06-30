@@ -3,7 +3,7 @@ import TypedFastBitSet from 'typedfastbitset';
 import { Index, Indexable, IndexSearchResult } from './embexed';
 import { GeoKDBush } from './geokdbush';
 
-export type BuildOptions = {
+export type GeoBuildOptions = {
   field: string;
 };
 
@@ -15,12 +15,12 @@ enum GeoOperationKind {
   GeoAround,
 }
 
-export interface Operation {
+export interface GeoOperation {
   kind: GeoOperationKind;
   execute(index: GeoKDBush<Coordinates>): number[];
 }
 
-export class GeoWithinSphere implements Operation {
+export class GeoWithinSphere implements GeoOperation {
   kind = GeoOperationKind.GeoWithinSphere;
   protected center: Coordinates;
   protected radius: number;
@@ -35,7 +35,7 @@ export class GeoWithinSphere implements Operation {
   }
 }
 
-export class GeoWithinBox implements Operation {
+export class GeoWithinBox implements GeoOperation {
   kind = GeoOperationKind.GeoWithinBox;
   protected min: Coordinates;
   protected max: Coordinates;
@@ -50,7 +50,7 @@ export class GeoWithinBox implements Operation {
   }
 }
 
-export class GeoAround implements Operation {
+export class GeoAround implements GeoOperation {
   kind = GeoOperationKind.GeoAround;
   protected center: Coordinates;
   protected radius?: number;
@@ -76,7 +76,7 @@ export class GeoIndex implements Index {
   protected field: string;
   protected index?: GeoKDBush<Coordinates>;
 
-  constructor(options: BuildOptions) {
+  constructor(options: GeoBuildOptions) {
     this.field = options.field;
   }
 
@@ -94,7 +94,7 @@ export class GeoIndex implements Index {
 
   async search(
     on: TypedFastBitSet,
-    operation: Operation
+    operation: GeoOperation
   ): Promise<IndexSearchResult> {
     return {
       ids: on.new_intersection(

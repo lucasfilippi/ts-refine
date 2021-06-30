@@ -10,11 +10,11 @@ import {
 
 type Primitives = string | number | boolean;
 
-export type BuildOptions = {
+export type FacettingBuildOptions = {
   facetingFields: string[];
 };
 
-export class Filter {
+export class FacettingFilter {
   protected field: string;
   // todo add callable ?
   protected values: Primitives[];
@@ -30,7 +30,7 @@ export class Filter {
 }
 
 export type SearchOptions = {
-  filters?: Filter[];
+  filters?: FacettingFilter[];
   distributionFields?: string[];
 };
 
@@ -43,7 +43,7 @@ export class FacettingIndex implements Index {
   protected facetingFields: string[];
   protected facetIndexes: Map<string, TypedFastBitSet>;
 
-  constructor(options: BuildOptions) {
+  constructor(options: FacettingBuildOptions) {
     this.facetingFields = options.facetingFields;
     this.facetIndexes = new Map();
   }

@@ -1,7 +1,7 @@
 import test from 'ava';
 import TypedFastBitSet from 'typedfastbitset';
 
-import { FullTextIndex, FullTextSearchOptions } from './fulltextindex';
+import { FullTextIndex } from './fulltextindex';
 
 const documents = [
   {

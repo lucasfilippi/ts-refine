@@ -167,7 +167,9 @@ export class Builder {
   }
 
   addDocuments(documents: Indexable[]): void {
-    this.datastore.push(...documents);
+    for (const d of documents) {
+      this.datastore.push(d);
+    }
   }
 
   build(): Embexed {

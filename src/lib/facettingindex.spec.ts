@@ -1,7 +1,7 @@
 import test, { ExecutionContext } from 'ava';
 import TypedFastBitSet from 'typedfastbitset';
 
-import { FacettingIndex, Filter } from './facettingindex';
+import { FacettingIndex, FacettingFilter } from './facettingindex';
 
 const documents = [
   {
@@ -44,7 +44,7 @@ const documents = [
 
 async function macroSearch(
   t: ExecutionContext,
-  facetFilters: Filter[],
+  facetFilters: FacettingFilter[],
   facetingFields: string[],
   expected: number[]
 ) {
@@ -64,7 +64,7 @@ async function macroSearch(
 test(
   'facettingindex search basic',
   macroSearch,
-  [new Filter('review', ['good'])],
+  [new FacettingFilter('review', ['good'])],
   ['category', 'random', 'review'],
   [0, 1]
 );
@@ -80,7 +80,7 @@ test(
 test(
   'facettingindex search filter inexistent value',
   macroSearch,
-  [new Filter('review', ['awesome'])],
+  [new FacettingFilter('review', ['awesome'])],
   ['category', 'random', 'review'],
   []
 );
@@ -89,9 +89,9 @@ test(
   'facettingindex search multiple filters',
   macroSearch,
   [
-    new Filter('review', ['good']),
-    new Filter('random', ['toc']),
-    new Filter('category', ['fiction']),
+    new FacettingFilter('review', ['good']),
+    new FacettingFilter('random', ['toc']),
+    new FacettingFilter('category', ['fiction']),
   ],
   ['category', 'random', 'review'],
   [0]
@@ -101,8 +101,8 @@ test(
   'facettingindex search multiple values',
   macroSearch,
   [
-    new Filter('random', ['toc', 'tic', 'tac']),
-    new Filter('category', ['fiction']),
+    new FacettingFilter('random', ['toc', 'tic', 'tac']),
+    new FacettingFilter('category', ['fiction']),
   ],
   ['category', 'random', 'review'],
   [0, 1, 2]
@@ -112,8 +112,8 @@ test(
   'facettingindex search multiple values with inexistent',
   macroSearch,
   [
-    new Filter('random', ['toc', 'tic', 'tac', 'tuc']),
-    new Filter('category', ['fiction']),
+    new FacettingFilter('random', ['toc', 'tic', 'tac', 'tuc']),
+    new FacettingFilter('category', ['fiction']),
   ],
   ['category', 'random', 'review'],
   [0, 1, 2]
@@ -122,7 +122,7 @@ test(
 test(
   'facettingindex search array facet',
   macroSearch,
-  [new Filter('tags', ['motor', 'book'])],
+  [new FacettingFilter('tags', ['motor', 'book'])],
   ['tags'],
   [0, 1, 2]
 );
@@ -130,7 +130,10 @@ test(
 test(
   'facettingindex search array facet + simple filter',
   macroSearch,
-  [new Filter('tags', ['motor', 'book']), new Filter('review', ['good'])],
+  [
+    new FacettingFilter('tags', ['motor', 'book']),
+    new FacettingFilter('review', ['good']),
+  ],
   ['review', 'tags'],
   [0, 1]
 );

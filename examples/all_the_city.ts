@@ -20,16 +20,19 @@ function classifyPopulation(pop: number): string {
 
 const builder = new Builder();
 builder.addIndex(
+  'fulltext',
   new FullTextIndex({
     fields: ['name'],
   })
 );
 builder.addIndex(
+  'facetting',
   new FacettingIndex({
     facetingFields: ['country', 'featureCode', 'populationClass'],
   })
 );
 builder.addIndex(
+  'geo_coordinates'
   new GeoIndex({
     field: 'coordinates',
   })

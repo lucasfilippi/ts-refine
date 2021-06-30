@@ -11,7 +11,6 @@ export type FullTextSearchOptions = MiniSearchSearchOptions & {
 };
 
 export class FullTextIndex implements Index {
-  key = 'fulltext';
   protected minisearch: MiniSearch;
 
   constructor(options: MiniSearchOptions<Indexable>) {
@@ -51,7 +50,7 @@ export class FullTextIndex implements Index {
     };
   }
 
-  serialize(): string {
+  toJSON(): string {
     return '';
   }
 }

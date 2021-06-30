@@ -1,7 +1,7 @@
 import test, { ExecutionContext } from 'ava';
 import TypedFastBitSet from 'typedfastbitset';
 
-import { FacettingIndex, FacettingFilter } from './facettingindex';
+import { FacettingFilter, FacettingIndex } from './facettingindex';
 
 const documents = [
   {

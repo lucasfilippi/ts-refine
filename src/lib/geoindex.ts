@@ -80,9 +80,6 @@ export class GeoIndex implements Index {
     this.field = options.field;
   }
 
-  get key(): string {
-    return 'geo_' + this.field.toLowerCase();
-  }
   // add some documents to the index
   build(documents: Indexable[]): void {
     this.index = new GeoKDBush<Coordinates>(
@@ -105,7 +102,7 @@ export class GeoIndex implements Index {
     };
   }
 
-  serialize(): string {
+  toJSON(): string {
     return '';
   }
 }

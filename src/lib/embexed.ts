@@ -65,8 +65,8 @@ export interface Index {
     results: SearchResult,
     options: unknown
   ): SearchResult;
-  serialize(): string;
-  key: string;
+  // toJSON(): string;
+  // key: string;
 }
 
 export class Embexed {
@@ -146,24 +146,39 @@ export class Embexed {
     return results;
   }
 
-  serialize(): string {
-    return '';
-  }
+  // toJSON(): string {
+  //   const indexes: Array<Indexable> = [];
+
+  //   for (let [key, idx] of this.indexes) {
+  //     indexes.push({
+  //       key: key,
+  //     });
+  //   }
+
+  //   return JSON.stringify({
+  //     datastore: this.datastore,
+  //     indexes: indexes,
+  //   });
+  // }
 }
 
 export class Builder {
-  protected indexes: Index[];
+  protected indexes: Map<string, Index>;
   protected datastore: Indexable[];
   protected storedFields?: string[];
 
   constructor(options?: BuilderOptions) {
-    this.indexes = [];
+    this.indexes = new Map();
     this.datastore = [];
     this.storedFields = options?.storedFields;
   }
 
-  addIndex(index: Index) {
-    this.indexes.push(index);
+  // load(raw:JSON):Embexed {
+
+  // }
+
+  addIndex(key: string, index: Index) {
+    this.indexes.set(key, index);
   }
 
   addDocuments(documents: Indexable[]): void {
@@ -175,10 +190,10 @@ export class Builder {
   build(): Embexed {
     const indexes = new Map();
 
-    this.indexes.forEach((i) => {
+    for (const [key, i] of this.indexes) {
       i.build(this.datastore);
-      indexes.set(i.key, i);
-    });
+      indexes.set(key, i);
+    }
 
     // filter datastore fields if necessary
     if (this.storedFields && this.storedFields.length > 0) {

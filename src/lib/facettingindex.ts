@@ -39,7 +39,6 @@ export type Distribution = {
 };
 
 export class FacettingIndex implements Index {
-  key = 'facetting';
   protected facetingFields: string[];
   protected facetIndexes: Map<string, TypedFastBitSet>;
 
@@ -141,7 +140,7 @@ export class FacettingIndex implements Index {
     return results;
   }
 
-  serialize(): string {
+  toJSON(): string {
     return '';
   }
 }

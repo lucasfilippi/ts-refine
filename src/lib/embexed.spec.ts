@@ -36,7 +36,6 @@ function shallowEqual(object1: Indexable, object2: Indexable) {
 
 // Create a Index which always return every id
 class IdentityIndex implements Index {
-  key = 'identity';
   index: TypedFastBitSet = new TypedFastBitSet();
 
   build(documents: Indexable[]): void {
@@ -64,7 +63,6 @@ class IdentityIndex implements Index {
 }
 
 class EvenIndex implements Index {
-  key = 'even';
   index: TypedFastBitSet = new TypedFastBitSet();
 
   build(documents: Indexable[]): void {
@@ -147,7 +145,7 @@ const pointOfInterest = [
 
 test('embexed build', async (t) => {
   const builder = new Builder({ storedFields: ['name', 'tags'] });
-  builder.addIndex(new IdentityIndex());
+  builder.addIndex('identity', new IdentityIndex());
 
   builder.addDocuments(pointOfInterest);
   const embexed = builder.build();
@@ -200,8 +198,8 @@ test('embexed build', async (t) => {
 
 test('embexed no index', async (t) => {
   const builder = new Builder();
-  builder.addIndex(new IdentityIndex());
-  builder.addIndex(new EvenIndex());
+  builder.addIndex('identity', new IdentityIndex());
+  builder.addIndex('even', new EvenIndex());
 
   builder.addDocuments(pointOfInterest);
   const embexed = builder.build();
@@ -218,8 +216,8 @@ test('embexed no index', async (t) => {
 
 test('embexed invalid index', async (t) => {
   const builder = new Builder();
-  builder.addIndex(new IdentityIndex());
-  builder.addIndex(new EvenIndex());
+  builder.addIndex('identity', new IdentityIndex());
+  builder.addIndex('even', new EvenIndex());
 
   builder.addDocuments(pointOfInterest);
   const embexed = builder.build();
@@ -236,8 +234,8 @@ test('embexed invalid index', async (t) => {
 
 test('embexed basic search', async (t) => {
   const builder = new Builder();
-  builder.addIndex(new IdentityIndex());
-  builder.addIndex(new EvenIndex());
+  builder.addIndex('identity', new IdentityIndex());
+  builder.addIndex('even', new EvenIndex());
 
   builder.addDocuments(pointOfInterest);
   const embexed = builder.build();

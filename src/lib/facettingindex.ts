@@ -1,5 +1,6 @@
 import TypedFastBitSet from 'typedfastbitset';
 
+import { deserializeBitSet, serializeBitSet } from './bitsetserializer';
 import { Index, IndexSearchResult, PlainObject, SearchResult } from './embexed';
 
 type Primitives = string | number | boolean;
@@ -134,7 +135,21 @@ export class FacettingIndex implements Index {
     return results;
   }
 
-  toJSON(): string {
-    return '';
+  asPlainObject(): PlainObject {
+    const po: PlainObject = {};
+
+    for (const [key, idx] of this.facetIndexes) {
+      po[key] = serializeBitSet(idx);
+    }
+
+    return po;
+  }
+
+  load(raw: PlainObject): void {
+    for (const [key, value] of Object.entries(raw)) {
+      if (typeof value === 'string') {
+        this.facetIndexes.set(key, deserializeBitSet(value));
+      }
+    }
   }
 }

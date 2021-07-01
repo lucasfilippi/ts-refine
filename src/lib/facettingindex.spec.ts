@@ -183,3 +183,20 @@ test('facettingindex postProcess', (t) => {
     },
   });
 });
+
+test('facettingindex serialization', (t) => {
+  const idx = new FacettingIndex({
+    facetingFields: ['category', 'random', 'review', 'tags'],
+  });
+
+  idx.build(documents);
+
+  const po = idx.asPlainObject();
+
+  const deserializedIdx = new FacettingIndex({
+    facetingFields: ['category', 'random', 'review', 'tags'],
+  });
+  deserializedIdx.load(po);
+
+  t.deepEqual(deserializedIdx, idx);
+});

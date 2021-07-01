@@ -68,3 +68,20 @@ test('fullTextIndex ', async (t) => {
   });
   t.deepEqual(results.metadata?.get(3)!.terms, ['zen', 'art']);
 });
+
+test('fullTextIndex serialization', (t) => {
+  const idx = new FullTextIndex({
+    fields: ['title', 'text'],
+  });
+
+  idx.build(documents);
+
+  const po = idx.asPlainObject();
+
+  const deserializedIdx = new FullTextIndex({
+    fields: ['title', 'text'],
+  });
+  deserializedIdx.load(po);
+
+  t.deepEqual(deserializedIdx, idx);
+});

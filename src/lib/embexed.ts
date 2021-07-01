@@ -1,16 +1,17 @@
 import TypedFastBitSet from 'typedfastbitset';
 
+export type Basics =
+  | undefined
+  | null
+  | number
+  | string
+  | boolean
+  | string[]
+  | number[]
+  | Basics[];
+
 export type PlainObject = {
-  [field: string]:
-    | undefined
-    | null
-    | number
-    | string
-    | boolean
-    | string[]
-    | number[]
-    | PlainObject
-    | PlainObject[];
+  [field: string]: Basics | PlainObject | PlainObject[];
 };
 
 export type BuilderOptions = {

@@ -67,3 +67,20 @@ test('geoindex ', async (t) => {
 
   t.deepEqual(results.ids.array(), [0, 1, 2, 3, 4]);
 });
+
+test('geoindex serialization', (t) => {
+  const idx = new GeoIndex({
+    field: 'coordinates',
+  });
+
+  idx.build(pointOfInterest);
+
+  const po = idx.asPlainObject();
+
+  const deserializedIdx = new GeoIndex({
+    field: 'coordinates',
+  });
+  deserializedIdx.load(po);
+
+  t.deepEqual(deserializedIdx, idx);
+});

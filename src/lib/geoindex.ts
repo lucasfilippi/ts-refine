@@ -102,7 +102,26 @@ export class GeoIndex implements Index {
     };
   }
 
-  toJSON(): string {
-    return '';
+  asPlainObject(): PlainObject {
+    if (!this.index) return {};
+    return {
+      points: this.index.points as number[][],
+    };
+  }
+
+  load(raw: PlainObject): void {
+    if (
+      raw.points &&
+      Array.isArray(raw.points) &&
+      (raw.points as Array<unknown>).every(
+        (p) =>
+          Array.isArray(p) &&
+          p.length === 2 &&
+          typeof p[0] === 'number' &&
+          typeof p[1] === 'number'
+      )
+    ) {
+      this.index = new GeoKDBush<Coordinates>(raw.points as Coordinates[]);
+    }
   }
 }

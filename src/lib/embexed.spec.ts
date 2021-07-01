@@ -1,6 +1,7 @@
 import test from 'ava';
 import TypedFastBitSet from 'typedfastbitset';
 
+import { deserializeBitSet, serializeBitSet } from './bitsetserializer';
 import {
   Builder,
   Index,
@@ -56,19 +57,15 @@ class IdentityIndex implements Index {
     return results;
   }
 
-  raw(): PlainObject {
+  asPlainObject(): PlainObject {
     return {
-      index: this.index.array(),
+      index: serializeBitSet(this.index),
     };
   }
 
   load(raw: PlainObject): void {
-    if (
-      raw.index &&
-      Array.isArray(raw.index) &&
-      (raw.index as Array<unknown>).every((i) => typeof i === 'number')
-    ) {
-      this.index = new TypedFastBitSet(raw.index as Array<number>);
+    if (raw.index && typeof raw.index === 'string') {
+      this.index = deserializeBitSet(raw.index);
     }
   }
 }
@@ -98,19 +95,15 @@ class EvenIndex implements Index {
     return results;
   }
 
-  raw(): PlainObject {
+  asPlainObject(): PlainObject {
     return {
-      index: this.index.array(),
+      index: serializeBitSet(this.index),
     };
   }
 
   load(raw: PlainObject): void {
-    if (
-      raw.index &&
-      Array.isArray(raw.index) &&
-      (raw.index as Array<unknown>).every((i) => typeof i === 'number')
-    ) {
-      this.index = new TypedFastBitSet(raw.index as Array<number>);
+    if (raw.index && typeof raw.index === 'string') {
+      this.index = deserializeBitSet(raw.index);
     }
   }
 }
@@ -293,4 +286,21 @@ test('embexed basic search', async (t) => {
   t.true(both.meta.has('ident'));
   t.deepEqual(both.meta.get('even'), { m1: 'value1', m2: 1 });
   t.deepEqual(both.meta.get('ident'), { i1: 'value2', i2: 2 });
+});
+
+test('embexed serialization', async (t) => {
+  const builder = new Builder();
+  builder.addIndex('identity', new IdentityIndex());
+  builder.addIndex('even', new EvenIndex());
+
+  const embexed = builder.build(pointOfInterest);
+
+  const serialized = embexed.serialize();
+
+  const builder2 = new Builder();
+  builder2.addIndex('identity', new IdentityIndex());
+  builder2.addIndex('even', new EvenIndex());
+  const deserialized = builder2.load(serialized);
+
+  t.deepEqual(deserialized, embexed);
 });

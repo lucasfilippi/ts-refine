@@ -12,7 +12,7 @@ test('bitsetserializer', (t) => {
   const bs = new TypedFastBitSet(input);
 
   const serialized = serializeBitSet(bs);
-  t.log(serialized);
+  // t.log(serialized);
 
   const deserialized = deserializeBitSet(serialized);
 

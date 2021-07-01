@@ -49,13 +49,13 @@ export interface Index {
     options: unknown
   ): SearchResult;
   load(raw: PlainObject): void;
-  raw(): PlainObject;
+  asPlainObject(): PlainObject;
 }
 
 export type Serialized = {
   datastore: PlainObject[];
   indexes: {
-    [key: string]: unknown;
+    [key: string]: PlainObject;
   };
 };
 
@@ -136,11 +136,13 @@ export class Embexed {
     return results;
   }
 
-  raw(): PlainObject {
-    const indexes: PlainObject = {};
+  serialize(): Serialized {
+    const indexes: {
+      [key: string]: PlainObject;
+    } = {};
 
     for (const [key, idx] of this.indexes) {
-      indexes[key] = idx.raw();
+      indexes[key] = idx.asPlainObject();
     }
 
     return {
@@ -163,16 +165,16 @@ export class Builder {
     this.indexes.set(key, index);
   }
 
-  // load(raw: Serialized): Embexed {
-  //   const indexes = new Map();
-  //   for (const [key, i] of this.indexes) {
-  //     if (raw.indexes[key]) {
-  //       i.load(raw.indexes[key]);
-  //     }
-  //     indexes.set(key, i);
-  //   }
-  //   return new Embexed(raw.datastore, indexes);
-  // }
+  load(raw: Serialized): Embexed {
+    const indexes = new Map();
+    for (const [key, i] of this.indexes) {
+      if (raw.indexes[key]) {
+        i.load(raw.indexes[key]);
+      }
+      indexes.set(key, i);
+    }
+    return new Embexed(raw.datastore, indexes);
+  }
 
   build(documents: PlainObject[]): Embexed {
     const datastore: PlainObject[] = [];

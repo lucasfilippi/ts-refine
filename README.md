@@ -7,3 +7,5 @@
 - doc: jsdoc
 - more check on type in compile : validate indexable with io-ts
 - more check on type in search
+
+- datastore strategy comparison : json + compression vs ??

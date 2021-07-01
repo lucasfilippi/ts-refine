@@ -1,6 +1,6 @@
 import TypedFastBitSet from 'typedfastbitset';
 
-import { Index, Indexable, IndexSearchResult } from './embexed';
+import { Index, IndexSearchResult, PlainObject } from './embexed';
 import { GeoKDBush } from './geokdbush';
 
 export type GeoBuildOptions = {
@@ -81,7 +81,7 @@ export class GeoIndex implements Index {
   }
 
   // add some documents to the index
-  build(documents: Indexable[]): void {
+  build(documents: PlainObject[]): void {
     this.index = new GeoKDBush<Coordinates>(
       documents.map((d) => {
         return d[this.field] as Coordinates;
@@ -98,7 +98,7 @@ export class GeoIndex implements Index {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         new TypedFastBitSet(operation.execute(this.index!))
       ),
-      // metadata?: Map<number, Metadata>; // ids indexed metadata
+      // metadata?: Map<number, PlainObject>; // ids indexed metadata
     };
   }
 

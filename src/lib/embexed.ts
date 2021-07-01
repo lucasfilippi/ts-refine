@@ -1,55 +1,38 @@
-import * as t from 'io-ts';
 import TypedFastBitSet from 'typedfastbitset';
 
-//INPUT Validation
-const indexableCodec = t.record(
-  t.string,
-  t.union([
-    t.undefined,
-    t.null,
-    t.string,
-    t.number,
-    t.boolean,
-    t.array(t.string),
-    t.array(t.number),
-  ])
-);
-export type Indexable = t.TypeOf<typeof indexableCodec>;
+export type PlainObject = {
+  [field: string]:
+    | undefined
+    | null
+    | number
+    | string
+    | boolean
+    | string[]
+    | number[]
+    | PlainObject
+    | PlainObject[];
+};
 
 export type BuilderOptions = {
   storedFields?: string[];
 };
 
 // SEARCH
-export type Metadata = {
-  [metadata: string]:
-    | number
-    | string
-    | boolean
-    | string[]
-    | number[]
-    | Metadata;
-};
-
-export function mergeMetadata(m1: Metadata, m2: Metadata): Metadata {
-  return Object.assign(m1, m2);
-}
 
 export type IndexSearchResult = {
   ids: TypedFastBitSet;
-  metadata?: Map<number, Metadata>; // ids indexed metadata
-  // searchMetadata?: Map<string, Metadata>; // Global metadata indexed by key to use in SearchResults
+  metadata?: Map<number, PlainObject>; // ids indexed metadata
 };
 
 export type Hit = {
   internalId: number;
-  data: Indexable;
-  meta?: Metadata;
+  data: PlainObject;
+  meta?: PlainObject;
 };
 
 export type SearchResult = {
   hits: Hit[];
-  meta: Map<string, Metadata>; // Union of IndexSearchResult.searchMetadata
+  meta: Map<string, PlainObject>; // Union of IndexSearchResult.searchMetadata
 };
 
 export type SearchOption = {
@@ -58,21 +41,29 @@ export type SearchOption = {
 
 export interface Index {
   // add some documents to the index
-  build(documents: Indexable[]): void;
+  build(documents: PlainObject[]): void;
   search(on: TypedFastBitSet, options: unknown): Promise<IndexSearchResult>;
   postProcess?(
     on: TypedFastBitSet,
     results: SearchResult,
     options: unknown
   ): SearchResult;
-  // toJSON(): string;
+  load(raw: PlainObject): void;
+  raw(): PlainObject;
 }
+
+export type Serialized = {
+  datastore: PlainObject[];
+  indexes: {
+    [key: string]: unknown;
+  };
+};
 
 export class Embexed {
   protected indexes: Map<string, Index>;
-  protected datastore: Indexable[];
+  protected datastore: PlainObject[];
 
-  constructor(datastore: Indexable[], indexes: Map<string, Index>) {
+  constructor(datastore: PlainObject[], indexes: Map<string, Index>) {
     this.indexes = indexes;
     this.datastore = datastore;
   }
@@ -90,13 +81,13 @@ export class Embexed {
       }
     });
 
-    const metadata: Map<number, Metadata> = new Map();
+    const metadata: Map<number, PlainObject> = new Map();
 
     if (promises.length > 0) {
       const results = await Promise.all(promises);
 
       for (const r of results) {
-        //validate metada is not present or same as ids
+        //validate metadata is not present or here for every ids
         if (!r.metadata || r.ids.size() === r.metadata.size) {
           matches.intersection(r.ids);
 
@@ -106,7 +97,7 @@ export class Embexed {
                 metadata.set(
                   id,
                   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  mergeMetadata(metadata.get(id)!, meta)
+                  Object.assign(metadata.get(id)!, meta)
                 );
               } else {
                 metadata.set(id, meta);
@@ -145,20 +136,18 @@ export class Embexed {
     return results;
   }
 
-  // toJSON(): string {
-  //   const indexes: Array<Indexable> = [];
+  raw(): PlainObject {
+    const indexes: PlainObject = {};
 
-  //   for (let [key, idx] of this.indexes) {
-  //     indexes.push({
-  //       key: key,
-  //     });
-  //   }
+    for (const [key, idx] of this.indexes) {
+      indexes[key] = idx.raw();
+    }
 
-  //   return JSON.stringify({
-  //     datastore: this.datastore,
-  //     indexes: indexes,
-  //   });
-  // }
+    return {
+      datastore: this.datastore,
+      indexes: indexes,
+    };
+  }
 }
 
 export class Builder {
@@ -170,16 +159,23 @@ export class Builder {
     this.storedFields = options?.storedFields;
   }
 
-  // load(raw:JSON):Embexed {
-
-  // }
-
   addIndex(key: string, index: Index) {
     this.indexes.set(key, index);
   }
 
-  build(documents: Indexable[]): Embexed {
-    const datastore: Indexable[] = [];
+  // load(raw: Serialized): Embexed {
+  //   const indexes = new Map();
+  //   for (const [key, i] of this.indexes) {
+  //     if (raw.indexes[key]) {
+  //       i.load(raw.indexes[key]);
+  //     }
+  //     indexes.set(key, i);
+  //   }
+  //   return new Embexed(raw.datastore, indexes);
+  // }
+
+  build(documents: PlainObject[]): Embexed {
+    const datastore: PlainObject[] = [];
     for (const d of documents) {
       datastore.push(d);
     }
@@ -198,7 +194,7 @@ export class Builder {
             Object.keys(d)
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               .filter((key) => this.storedFields!.includes(key))
-              .reduce((obj: Indexable, key) => {
+              .reduce((obj: PlainObject, key) => {
                 obj[key] = d[key];
                 return obj;
               }, {})

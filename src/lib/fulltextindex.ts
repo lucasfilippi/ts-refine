@@ -4,7 +4,7 @@ import MiniSearch, {
 } from 'minisearch';
 import TypedFastBitSet from 'typedfastbitset';
 
-import { Index, Indexable, IndexSearchResult, Metadata } from './embexed';
+import { Index, IndexSearchResult, PlainObject } from './embexed';
 
 export type FullTextSearchOptions = MiniSearchSearchOptions & {
   query: string;
@@ -13,15 +13,15 @@ export type FullTextSearchOptions = MiniSearchSearchOptions & {
 export class FullTextIndex implements Index {
   protected minisearch: MiniSearch;
 
-  constructor(options: MiniSearchOptions<Indexable>) {
+  constructor(options: MiniSearchOptions<PlainObject>) {
     delete options.storeFields;
     // use our internal id, see compile method
     options.idField = '_internalId';
-    this.minisearch = new MiniSearch<Indexable>(options);
+    this.minisearch = new MiniSearch<PlainObject>(options);
   }
 
   // add some documents to the index
-  build(documents: Indexable[]): void {
+  build(documents: PlainObject[]): void {
     this.minisearch.addAll(
       documents.map((d, i) => {
         return { ...d, _internalId: i };
@@ -35,7 +35,7 @@ export class FullTextIndex implements Index {
   ): Promise<IndexSearchResult> {
     const results = this.minisearch.search(options.query, options);
 
-    const metadata = new Map<number, Metadata>();
+    const metadata = new Map<number, PlainObject>();
     results.forEach((r) => {
       metadata.set(r.id, {
         terms: r.terms,

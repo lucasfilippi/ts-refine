@@ -1,12 +1,6 @@
 import TypedFastBitSet from 'typedfastbitset';
 
-import {
-  Index,
-  Indexable,
-  IndexSearchResult,
-  Metadata,
-  SearchResult,
-} from './embexed';
+import { Index, IndexSearchResult, PlainObject, SearchResult } from './embexed';
 
 type Primitives = string | number | boolean;
 
@@ -47,7 +41,7 @@ export class FacettingIndex implements Index {
     this.facetIndexes = new Map();
   }
 
-  build(documents: Indexable[]): void {
+  build(documents: PlainObject[]): void {
     documents.forEach((doc, i) => {
       for (const field of this.facetingFields) {
         const values: Primitives[] = Array.isArray(doc[field])
@@ -120,7 +114,7 @@ export class FacettingIndex implements Index {
       indexes.get(field).set(value, idx);
     }
 
-    const distribution: Metadata = Object.fromEntries(
+    const distribution: PlainObject = Object.fromEntries(
       fields.map((field: string) => {
         const dist: { [facetValue: string]: number } = {};
 

@@ -4,13 +4,12 @@ import TypedFastBitSet from 'typedfastbitset';
 import {
   Builder,
   Index,
-  Indexable,
   IndexSearchResult,
-  Metadata,
+  PlainObject,
   SearchResult,
 } from './embexed';
 
-function shallowEqual(object1: Indexable, object2: Indexable) {
+function shallowEqual(object1: PlainObject, object2: PlainObject) {
   const keys1 = Object.keys(object1);
   const keys2 = Object.keys(object2);
 
@@ -38,12 +37,12 @@ function shallowEqual(object1: Indexable, object2: Indexable) {
 class IdentityIndex implements Index {
   index: TypedFastBitSet = new TypedFastBitSet();
 
-  build(documents: Indexable[]): void {
+  build(documents: PlainObject[]): void {
     this.index = new TypedFastBitSet([...documents.keys()]);
   }
 
   async search(): Promise<IndexSearchResult> {
-    const metadata = new Map<number, Metadata>();
+    const metadata = new Map<number, PlainObject>();
 
     this.index.array().forEach((i) => metadata.set(i, { dumber: 1 }));
     return {
@@ -57,22 +56,34 @@ class IdentityIndex implements Index {
     return results;
   }
 
-  serialize(): string {
-    return '';
+  raw(): PlainObject {
+    return {
+      index: this.index.array(),
+    };
+  }
+
+  load(raw: PlainObject): void {
+    if (
+      raw.index &&
+      Array.isArray(raw.index) &&
+      (raw.index as Array<unknown>).every((i) => typeof i === 'number')
+    ) {
+      this.index = new TypedFastBitSet(raw.index as Array<number>);
+    }
   }
 }
 
 class EvenIndex implements Index {
   index: TypedFastBitSet = new TypedFastBitSet();
 
-  build(documents: Indexable[]): void {
+  build(documents: PlainObject[]): void {
     this.index = new TypedFastBitSet(
       [...documents.keys()].filter((k) => k % 2 === 0)
     );
   }
 
   async search(): Promise<IndexSearchResult> {
-    const metadata = new Map<number, Metadata>();
+    const metadata = new Map<number, PlainObject>();
 
     this.index.array().forEach((i) => metadata.set(i, { dumb: 1 }));
 
@@ -87,8 +98,20 @@ class EvenIndex implements Index {
     return results;
   }
 
-  serialize(): string {
-    return '';
+  raw(): PlainObject {
+    return {
+      index: this.index.array(),
+    };
+  }
+
+  load(raw: PlainObject): void {
+    if (
+      raw.index &&
+      Array.isArray(raw.index) &&
+      (raw.index as Array<unknown>).every((i) => typeof i === 'number')
+    ) {
+      this.index = new TypedFastBitSet(raw.index as Array<number>);
+    }
   }
 }
 

@@ -42,8 +42,7 @@
     "node": ">=10"
   },
   "dependencies": {
-    "fp-ts": "^2.10.5",
-    "io-ts": "^2.2.16",
+    "@types/node": "^15.14.0",
     "kdbush": "^3.0.0",
     "minisearch": "^3.0.2",
     "tinyqueue": "^2.0.3",

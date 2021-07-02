@@ -50,7 +50,7 @@ export class FacettingIndex implements Index {
           : ([doc[field]] as Primitives[]);
 
         values.forEach((v) => {
-          const value: string = v.toString();
+          const value: string = v?.toString();
           if (value) {
             const id = `${field}:${value}`;
             if (!this.facetIndexes.has(id)) {

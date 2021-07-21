@@ -29,9 +29,7 @@ export type SearchOptions = {
   distributionFields?: string[];
 };
 
-export type Distribution = {
-  readonly [facetName: string]: { [facetValue: string]: number };
-};
+export type Distribution = Record<string, Record<string, number>>;
 
 export class FacettingIndex implements Index {
   protected facetingFields: string[];
@@ -71,7 +69,9 @@ export class FacettingIndex implements Index {
     on: TypedFastBitSet,
     options: SearchOptions
   ): Promise<IndexSearchResult> {
-    const facetIndexesIds = options.filters?.map((f) => f.facetIds());
+    const facetIndexesIds = options.filters
+      ?.filter((f) => f != undefined)
+      .map((f) => f.facetIds());
 
     if (facetIndexesIds) {
       facetIndexesIds.forEach((facetIndexesId) => {

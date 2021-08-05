@@ -8,7 +8,7 @@ import {
   IndexSearchResult,
   PlainObject,
   SearchResult,
-} from './embexed';
+} from './refine';
 
 function shallowEqual(object1: PlainObject, object2: PlainObject) {
   const keys1 = Object.keys(object1);

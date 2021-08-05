@@ -1,4 +1,4 @@
-export * from './lib/embexed';
-export * from './lib/facettingindex';
+export * from './lib/refine';
+export * from './lib/facetedindex';
 export * from './lib/fulltextindex';
 export * from './lib/geoindex';

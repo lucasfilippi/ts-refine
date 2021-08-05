@@ -1,13 +1,13 @@
 {
-  "name": "minifacet",
-  "version": "1.0.0",
-  "description": "Add faceted search support to minisearch",
+  "name": "ts-refine",
+  "version": "0.0.1",
+  "description": "In memory Full-text / Faceted / Geo Search written in typescript",
   "main": "build/main/index.js",
   "typings": "build/main/index.d.ts",
   "module": "build/module/index.js",
-  "repository": "https://github.com/YOUR_GITHUB_USER_NAME/minifacet",
+  "repository": "https://github.com/lucasfilippi/ts-refine",
   "license": "MIT",
-  "keywords": [],
+  "keywords": ["search", "search-engine", "fulltext-search", "faceted-search", "geo-search", "typescript"],
   "scripts": {
     "build": "run-p build:*",
     "build:main": "tsc -p tsconfig.json",

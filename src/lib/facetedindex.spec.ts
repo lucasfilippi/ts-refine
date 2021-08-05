@@ -1,7 +1,7 @@
 import test, { ExecutionContext } from 'ava';
 import TypedFastBitSet from 'typedfastbitset';
 
-import { FacettingFilter, FacettingIndex } from './facettingindex';
+import { FacetedIndex, FacetFilter } from './facetedindex';
 
 const documents = [
   {
@@ -44,12 +44,12 @@ const documents = [
 
 async function macroSearch(
   t: ExecutionContext,
-  facetFilters: FacettingFilter[],
-  facetingFields: string[],
+  facetFilters: FacetFilter[],
+  fields: string[],
   expected: number[]
 ) {
-  const idx = new FacettingIndex({
-    facetingFields: facetingFields,
+  const idx = new FacetedIndex({
+    fields: fields,
   });
 
   idx.build(documents);
@@ -64,7 +64,7 @@ async function macroSearch(
 test(
   'facettingindex search basic',
   macroSearch,
-  [new FacettingFilter('review', ['good'])],
+  [new FacetFilter('review', ['good'])],
   ['category', 'random', 'review'],
   [0, 1]
 );
@@ -80,7 +80,7 @@ test(
 test(
   'facettingindex search filter inexistent value',
   macroSearch,
-  [new FacettingFilter('review', ['awesome'])],
+  [new FacetFilter('review', ['awesome'])],
   ['category', 'random', 'review'],
   []
 );
@@ -89,9 +89,9 @@ test(
   'facettingindex search multiple filters',
   macroSearch,
   [
-    new FacettingFilter('review', ['good']),
-    new FacettingFilter('random', ['toc']),
-    new FacettingFilter('category', ['fiction']),
+    new FacetFilter('review', ['good']),
+    new FacetFilter('random', ['toc']),
+    new FacetFilter('category', ['fiction']),
   ],
   ['category', 'random', 'review'],
   [0]
@@ -101,8 +101,8 @@ test(
   'facettingindex search multiple values',
   macroSearch,
   [
-    new FacettingFilter('random', ['toc', 'tic', 'tac']),
-    new FacettingFilter('category', ['fiction']),
+    new FacetFilter('random', ['toc', 'tic', 'tac']),
+    new FacetFilter('category', ['fiction']),
   ],
   ['category', 'random', 'review'],
   [0, 1, 2]
@@ -112,8 +112,8 @@ test(
   'facettingindex search multiple values with inexistent',
   macroSearch,
   [
-    new FacettingFilter('random', ['toc', 'tic', 'tac', 'tuc']),
-    new FacettingFilter('category', ['fiction']),
+    new FacetFilter('random', ['toc', 'tic', 'tac', 'tuc']),
+    new FacetFilter('category', ['fiction']),
   ],
   ['category', 'random', 'review'],
   [0, 1, 2]
@@ -122,7 +122,7 @@ test(
 test(
   'facettingindex search array facet',
   macroSearch,
-  [new FacettingFilter('tags', ['motor', 'book'])],
+  [new FacetFilter('tags', ['motor', 'book'])],
   ['tags'],
   [0, 1, 2]
 );
@@ -131,16 +131,16 @@ test(
   'facettingindex search array facet + simple filter',
   macroSearch,
   [
-    new FacettingFilter('tags', ['motor', 'book']),
-    new FacettingFilter('review', ['good']),
+    new FacetFilter('tags', ['motor', 'book']),
+    new FacetFilter('review', ['good']),
   ],
   ['review', 'tags'],
   [0, 1]
 );
 
 test('facettingindex postProcess', (t) => {
-  const idx = new FacettingIndex({
-    facetingFields: ['category', 'random', 'review', 'tags'],
+  const idx = new FacetedIndex({
+    fields: ['category', 'random', 'review', 'tags'],
   });
 
   idx.build(documents);
@@ -185,16 +185,16 @@ test('facettingindex postProcess', (t) => {
 });
 
 test('facettingindex serialization', (t) => {
-  const idx = new FacettingIndex({
-    facetingFields: ['category', 'random', 'review', 'tags'],
+  const idx = new FacetedIndex({
+    fields: ['category', 'random', 'review', 'tags'],
   });
 
   idx.build(documents);
 
   const po = idx.asPlainObject();
 
-  const deserializedIdx = new FacettingIndex({
-    facetingFields: ['category', 'random', 'review', 'tags'],
+  const deserializedIdx = new FacetedIndex({
+    fields: ['category', 'random', 'review', 'tags'],
   });
   deserializedIdx.load(po);
 

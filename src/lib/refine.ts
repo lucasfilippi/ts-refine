@@ -13,10 +13,6 @@ export type PlainObject = {
   [key: string]: PlainObjectValue;
 };
 
-export type BuilderOptions = {
-  storedFields?: string[];
-};
-
 // SEARCH
 
 export type IndexSearchResult = {
@@ -59,7 +55,7 @@ export type Serialized = {
   };
 };
 
-export class Embexed {
+export class Refine {
   protected indexes: Map<string, Index>;
   protected datastore: PlainObject[];
 
@@ -156,7 +152,7 @@ export class Builder {
   protected indexes: Map<string, Index>;
   protected storedFields?: string[];
 
-  constructor(options?: BuilderOptions) {
+  constructor(options?: { storedFields?: string[] }) {
     this.indexes = new Map();
     this.storedFields = options?.storedFields;
   }
@@ -165,7 +161,7 @@ export class Builder {
     this.indexes.set(key, index);
   }
 
-  load(raw: Serialized): Embexed {
+  load(raw: Serialized): Refine {
     const indexes = new Map();
     for (const [key, i] of this.indexes) {
       if (raw.indexes[key]) {
@@ -173,10 +169,10 @@ export class Builder {
       }
       indexes.set(key, i);
     }
-    return new Embexed(raw.datastore, indexes);
+    return new Refine(raw.datastore, indexes);
   }
 
-  build(documents: PlainObject[]): Embexed {
+  build(documents: PlainObject[]): Refine {
     const datastore: PlainObject[] = [];
     for (const d of documents) {
       datastore.push(d);
@@ -190,7 +186,7 @@ export class Builder {
 
     // filter datastore fields if necessary
     if (this.storedFields && this.storedFields.length > 0) {
-      return new Embexed(
+      return new Refine(
         datastore.map((d) => {
           return (
             Object.keys(d)
@@ -206,6 +202,6 @@ export class Builder {
       );
     }
 
-    return new Embexed(datastore, indexes);
+    return new Refine(datastore, indexes);
   }
 }

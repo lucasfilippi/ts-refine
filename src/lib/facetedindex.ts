@@ -1,17 +1,12 @@
 import TypedFastBitSet from 'typedfastbitset';
 
 import { deserializeBitSet, serializeBitSet } from './bitsetserializer';
-import { Index, IndexSearchResult, PlainObject, SearchResult } from './embexed';
+import { Index, IndexSearchResult, PlainObject, SearchResult } from './refine';
 
 type Primitives = string | number | boolean;
 
-export type FacettingBuildOptions = {
-  facetingFields: string[];
-};
-
-export class FacettingFilter {
+export class FacetFilter {
   protected field: string;
-  // todo add callable ?
   protected values: Primitives[];
 
   constructor(field: string, values: Primitives[]) {
@@ -25,24 +20,24 @@ export class FacettingFilter {
 }
 
 export type SearchOptions = {
-  filters?: FacettingFilter[];
+  filters?: FacetFilter[];
   distributionFields?: string[];
 };
 
 export type Distribution = Record<string, Record<string, number>>;
 
-export class FacettingIndex implements Index {
-  protected facetingFields: string[];
+export class FacetedIndex implements Index {
+  protected fields: string[];
   protected facetIndexes: Map<string, TypedFastBitSet>;
 
-  constructor(options: FacettingBuildOptions) {
-    this.facetingFields = options.facetingFields;
+  constructor(options: { fields: string[] }) {
+    this.fields = options.fields;
     this.facetIndexes = new Map();
   }
 
   build(documents: PlainObject[]): void {
     documents.forEach((doc, i) => {
-      for (const field of this.facetingFields) {
+      for (const field of this.fields) {
         const values: Primitives[] = Array.isArray(doc[field])
           ? (doc[field] as Primitives[])
           : ([doc[field]] as Primitives[]);
@@ -64,7 +59,6 @@ export class FacettingIndex implements Index {
     });
   }
 
-  // TODO: handle there is no filters
   async search(
     on: TypedFastBitSet,
     options: SearchOptions
@@ -100,10 +94,8 @@ export class FacettingIndex implements Index {
     results: SearchResult,
     options: SearchOptions
   ): SearchResult {
-    // Add distribution
-
     const indexes = new Map();
-    const fields: string[] = options.distributionFields || this.facetingFields;
+    const fields: string[] = options.distributionFields || this.fields;
 
     for (const [key, idx] of this.facetIndexes) {
       const [field, value] = key.split(':', 2);

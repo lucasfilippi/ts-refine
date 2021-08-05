@@ -1,7 +1,7 @@
 import TypedFastBitSet from 'typedfastbitset';
 
-import { Index, IndexSearchResult, PlainObject } from './embexed';
 import { GeoKDBush } from './geokdbush';
+import { Index, IndexSearchResult, PlainObject } from './refine';
 
 export type GeoBuildOptions = {
   field: string;

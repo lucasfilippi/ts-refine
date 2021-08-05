@@ -1,10 +1,12 @@
 import all_the_cities from 'all-the-cities';
 import test from 'ava';
 
-import { Builder } from './embexed';
-import { FacettingFilter, FacettingIndex } from './facettingindex';
+import { FacetedIndex, FacetFilter } from './facetedindex';
 import { FullTextIndex } from './fulltextindex';
 import { GeoAround, GeoIndex } from './geoindex';
+import { Builder } from './refine';
+
+const byteSize = (str: string) => Buffer.byteLength(str, 'utf8');
 
 function classifyPopulation(pop: number): string {
   if (pop < 5000) {
@@ -30,8 +32,8 @@ test('perf', async (t) => {
   );
   builder.addIndex(
     'facetting',
-    new FacettingIndex({
-      facetingFields: ['country', 'featureCode', 'populationClass'],
+    new FacetedIndex({
+      fields: ['country', 'featureCode', 'populationClass'],
     })
   );
   builder.addIndex(
@@ -41,7 +43,7 @@ test('perf', async (t) => {
     })
   );
 
-  const embexed = builder.build(
+  const refine = builder.build(
     all_the_cities.map((city) => {
       return {
         cityId: city.cityId,
@@ -58,17 +60,18 @@ test('perf', async (t) => {
   console.timeEnd(`BUILD`);
 
   console.time(`SEARCH`);
-  const all = await embexed.search({
+  const all = await refine.search({
     fulltext: { query: 'an', prefix: true },
     facetting: {
-      filters: [new FacettingFilter('populationClass', ['10K-100K'])],
+      filters: [new FacetFilter('populationClass', ['10K-100K'])],
     },
     geo_coordinates: new GeoAround([2.333333, 48.866667], 200),
   });
 
   console.timeEnd(`SEARCH`);
 
-  const asString = JSON.stringify(embexed.serialize());
+  const asString = JSON.stringify(refine.serialize());
+  console.log(`Index size : ${byteSize(asString) / 1024 / 1024} Mb`);
 
   console.time(`LOAD`);
   const loader = new Builder();
@@ -80,8 +83,8 @@ test('perf', async (t) => {
   );
   loader.addIndex(
     'facetting',
-    new FacettingIndex({
-      facetingFields: ['country', 'featureCode', 'populationClass'],
+    new FacetedIndex({
+      fields: ['country', 'featureCode', 'populationClass'],
     })
   );
   loader.addIndex(
@@ -97,7 +100,7 @@ test('perf', async (t) => {
   const allFromLoaded = await loaded.search({
     fulltext: { query: 'an', prefix: true },
     facetting: {
-      filters: [new FacettingFilter('populationClass', ['10K-100K'])],
+      filters: [new FacetFilter('populationClass', ['10K-100K'])],
     },
     geo_coordinates: new GeoAround([2.333333, 48.866667], 200),
   });

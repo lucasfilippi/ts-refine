@@ -5,7 +5,7 @@ import MiniSearch, {
 } from 'minisearch';
 import TypedFastBitSet from 'typedfastbitset';
 
-import { Index, IndexSearchResult, PlainObject } from './embexed';
+import { Index, IndexSearchResult, PlainObject } from './refine';
 
 export type FullTextSearchOptions = MiniSearchSearchOptions & {
   query: string;
